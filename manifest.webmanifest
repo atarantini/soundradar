@@ -1,0 +1,14 @@
+{
+  "name": "SoundRadar — spectrum analyzer",
+  "short_name": "SoundRadar",
+  "description": "Real-time audio spectrum analyzer and waterfall display that runs entirely in your browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#e9ebef",
+  "theme_color": "#f4f6f8",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,18 @@
+# Agent / tooling scratch
+.playwright-mcp/
+.claude/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Local notes and captures
+*.local.md
+soundradar-*.png
+soundradar-*.csv

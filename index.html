@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>SoundRadar — real-time audio spectrum analyzer</title>
+<meta name="description" content="Read the sound in a room: a real-time spectrum analyzer and waterfall that runs entirely in your browser, readable in daylight.">
+<meta property="og:title" content="SoundRadar">
+<meta property="og:description" content="Real-time audio spectrum analyzer and waterfall, in the browser.">
+<meta property="og:type" content="website">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ══ Toolbar ══ -->
+<header class="bar">
+  <span class="wordmark">SoundRadar</span>
+
+  <nav class="menus" aria-label="Display settings">
+    <details class="menu" id="menuSpan">
+      <summary>Span</summary>
+      <div class="menu-panel">
+        <label class="field field-row"><span class="tag">From</span>
+          <input type="range" id="minFreq" min="0" max="1000" step="1">
+          <output class="num" id="minFreqVal">20 Hz</output>
+        </label>
+        <label class="field field-row"><span class="tag">To</span>
+          <input type="range" id="maxFreq" min="0" max="1000" step="1">
+          <output class="num" id="maxFreqVal">20.0 kHz</output>
+        </label>
+        <div class="seg" role="group" aria-label="Frequency scale">
+          <button type="button" class="seg-btn" data-scale="log">Logarithmic</button>
+          <button type="button" class="seg-btn" data-scale="linear">Linear</button>
+        </div>
+        <p class="tag">Presets</p>
+        <div class="chips">
+          <button type="button" class="chip" data-span="20,20000">Full range</button>
+          <button type="button" class="chip" data-span="20,300">Rumble</button>
+          <button type="button" class="chip" data-span="300,3400">Speech</button>
+          <button type="button" class="chip" data-span="2000,20000">Hiss</button>
+          <button type="button" class="chip" data-span="40,160">Mains hum</button>
+        </div>
+        <button class="btn btn-block" id="rangeReset" type="button">Reset span</button>
+      </div>
+    </details>
+
+    <details class="menu" id="menuLevel">
+      <summary>Level</summary>
+      <div class="menu-panel">
+        <label class="field field-row"><span class="tag">Floor</span>
+          <input type="range" id="minDb" min="-150" max="-30" step="1">
+          <output class="num" id="minDbVal">-100 dB</output>
+        </label>
+        <label class="field field-row"><span class="tag">Ceiling</span>
+          <input type="range" id="maxDb" min="-100" max="0" step="1">
+          <output class="num" id="maxDbVal">-20 dB</output>
+        </label>
+        <button class="btn btn-block" id="autoLevel" type="button">Fit to signal</button>
+        <p class="hint">Sets the floor and ceiling from what the input is doing right now.</p>
+      </div>
+    </details>
+
+    <details class="menu" id="menuAnalysis">
+      <summary>Analysis</summary>
+      <div class="menu-panel">
+        <label class="field field-row"><span class="tag">FFT size</span>
+          <select id="fftSize"></select>
+        </label>
+        <label class="field field-row"><span class="tag">Smoothing</span>
+          <input type="range" id="smoothing" min="0" max="0.95" step="0.05">
+          <output class="num" id="smoothingVal">0.70</output>
+        </label>
+        <label class="check"><input type="checkbox" id="peakHold"><span>Hold peaks</span></label>
+        <label class="field field-row"><span class="tag">Decay</span>
+          <input type="range" id="peakDecay" min="1" max="40" step="1">
+          <output class="num" id="peakDecayVal">12 dB/s</output>
+        </label>
+        <p class="hint" id="binHint">Larger FFT sizes resolve closer frequencies but react more slowly.</p>
+      </div>
+    </details>
+
+    <details class="menu" id="menuDisplay">
+      <summary>Display</summary>
+      <div class="menu-panel">
+        <label class="check"><input type="checkbox" id="waterfallOn"><span>Waterfall</span></label>
+        <label class="field field-row"><span class="tag">History</span>
+          <select id="waterfallSpan"></select>
+        </label>
+        <label class="field field-row"><span class="tag">Palette</span>
+          <select id="colorMap"></select>
+        </label>
+        <label class="check"><input type="checkbox" id="spectrumFill"><span>Fill under trace</span></label>
+        <label class="check"><input type="checkbox" id="showHearingBand"><span>Dim inaudible range</span></label>
+        <hr class="menu-rule">
+        <label class="field field-row"><span class="tag">Input</span>
+          <select id="deviceSelect"><option value="">System default</option></select>
+        </label>
+        <button class="btn btn-block" id="savePng" type="button">Save view as PNG</button>
+        <button class="btn btn-block" id="resetAll" type="button">Reset all settings</button>
+      </div>
+    </details>
+  </nav>
+
+  <button class="icon-btn" id="themeBtn" type="button" title="Switch between daylight and low-light" aria-label="Switch between daylight and low-light">◐</button>
+
+  <!-- Capture sits last in the bar so it is always the rightmost control,
+       in the same place whatever else the toolbar is showing. -->
+  <button class="capture" id="runBtn" type="button">
+    <span class="capture-dot" id="lamp" aria-hidden="true"></span>
+    <span id="runLabel">Start capture</span>
+  </button>
+</header>
+
+<!-- ══ Summary strip ══ -->
+<section class="summary" aria-label="Current reading">
+  <div class="sum sum-peak">
+    <span class="tag">Loudest frequency</span>
+    <p class="sum-big"><span id="peakFreq">—</span><i id="peakUnit"></i></p>
+  </div>
+  <div class="sum"><span class="tag">Level</span><p class="sum-val" id="peakLevel">—</p></div>
+  <div class="sum"><span class="tag">Resolution</span><p class="sum-val" id="roBin">—</p></div>
+  <div class="sum sum-input">
+    <span class="tag">Input level</span>
+    <div class="vu"><div class="vu-fill" id="vuFill"></div><div class="vu-peak" id="vuPeak"></div></div>
+    <p class="sum-val sum-val-sm" id="vuLabel">—</p>
+  </div>
+  <div class="sum sum-device"><span class="tag">Source</span><p class="sum-val sum-val-sm" id="statusDevice">Not started</p></div>
+</section>
+
+<!-- ══ Plates + ruler ══ -->
+<main class="field-view" id="fieldView">
+  <div class="plate" id="spectrumPlot">
+    <canvas id="spectrumCanvas"></canvas>
+    <canvas id="spectrumOverlay" class="overlay"></canvas>
+    <span class="plate-tag">Spectrum</span>
+  </div>
+
+  <!-- The ruler is the signature of this layout: one shared frequency axis that
+       both plates hang off, and the surface where markers are planted. -->
+  <div class="ruler" id="ruler" role="group" aria-label="Frequency ruler and markers">
+    <canvas id="rulerCanvas"></canvas>
+  </div>
+
+  <div class="plate" id="waterfallPlot">
+    <canvas id="waterfallCanvas"></canvas>
+    <canvas id="waterfallOverlay" class="overlay"></canvas>
+    <span class="plate-tag">Waterfall</span>
+  </div>
+
+  <!-- Zoom/pan pad: the wheel and the arrow keys do the same thing, but on a
+       tablet there is no wheel and no keyboard. -->
+  <div class="pad" id="viewPad" role="group" aria-label="Zoom and pan the frequency span">
+    <button class="pad-btn" id="panLeftBtn" type="button" title="Pan left (←)" aria-label="Pan left">◄</button>
+    <button class="pad-btn" id="panRightBtn" type="button" title="Pan right (→)" aria-label="Pan right">►</button>
+    <span class="pad-sep" aria-hidden="true"></span>
+    <button class="pad-btn" id="zoomOutBtn" type="button" title="Zoom out (−)" aria-label="Zoom out">−</button>
+    <button class="pad-btn" id="zoomInBtn" type="button" title="Zoom in (+)" aria-label="Zoom in">+</button>
+  </div>
+
+  <div class="tooltip hidden" id="tooltip" role="status"></div>
+
+  <div class="curtain" id="curtain">
+    <div class="curtain-inner">
+      <h2 class="curtain-title" id="curtainTitle">No signal yet</h2>
+      <p class="curtain-body" id="curtainBody">Start capture to read the room. Audio is analysed in this tab and never leaves your device.</p>
+      <button class="btn btn-primary" id="curtainBtn" type="button">Start capture</button>
+    </div>
+  </div>
+</main>
+
+<!-- ══ Marker report ══ -->
+<section class="report" id="report">
+  <header class="report-head">
+    <h2 class="report-title">Markers</h2>
+    <span class="report-count" id="markerCount">0</span>
+    <span class="report-spacer"></span>
+    <button class="link" id="markHarmonics" type="button" title="Add markers on the harmonics of the loudest frequency">Mark harmonics</button>
+    <button class="link" id="exportMarkers" type="button">Export CSV</button>
+    <button class="link link-danger" id="clearMarkers" type="button">Clear</button>
+    <button class="link report-toggle" id="reportToggle" type="button" aria-expanded="true">Hide</button>
+  </header>
+  <div class="report-body" id="reportBody">
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th scope="col" class="col-pin">Pin</th>
+          <th scope="col">Name</th>
+          <th scope="col" class="num-col">Frequency</th>
+          <th scope="col" class="num-col">Band</th>
+          <th scope="col" class="col-meter">Level</th>
+          <th scope="col" class="num-col">Now</th>
+          <th scope="col" class="num-col">Peak</th>
+          <th scope="col" class="col-trend">Trend</th>
+          <th scope="col"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody id="markerRows"></tbody>
+    </table>
+    <p class="empty" id="markersEmpty">No markers yet. Double-click a plate or the ruler to plant one at that frequency, then drag its pin along the ruler to adjust. Markers are saved in this browser.</p>
+  </div>
+</section>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

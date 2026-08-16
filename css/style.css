@@ -1,0 +1,790 @@
+/* ============================================================================
+   SoundRadar
+   A field instrument you can read in daylight. The chrome is chart paper —
+   light, high-contrast, printed — and the plots are dark plates inset into it,
+   because a spectrogram needs a dark ground to show colour. The two halves are
+   joined by one engraved frequency ruler that both plates hang off, which is
+   also where markers are planted.
+
+   Ultramarine is the instrument mark: axes, selections, the active state. Red is
+   reserved for capture and removal, so it never appears decoratively.
+   ========================================================================== */
+
+:root {
+  --paper:   #e9ebef;
+  --paper-2: #f4f6f8;
+  --paper-3: #ffffff;
+  --rule:    #ccd2da;
+  --rule-2:  #a3adba;
+  --ink:     #101820;
+  --ink-2:   #4c5867;
+  --ink-3:   #7a8794;
+  --accent:  #2a3fd4;
+  --accent-soft: #e0e4fb;
+  --flag:    #cf2b21;
+  --plate:   #0c1016;
+
+  --shadow-plate: 0 1px 0 rgba(255,255,255,0.7), 0 2px 10px rgba(16,24,32,0.14);
+
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+
+  --bar-h: 3rem;
+
+  /* Plate colours do not follow the paper: the plots stay dark in both themes,
+     so a spectrogram always has the dark ground its colour maps need. */
+  --plate-grid:  rgba(226, 232, 240, 0.11);
+  --plate-grid-2: rgba(226, 232, 240, 0.05);
+  --plate-text:  rgba(226, 232, 240, 0.7);
+  --plate-trace: #8ea6ff;
+  --plate-fill:  rgba(142, 166, 255, 0.2);
+  --plate-peak:  rgba(142, 166, 255, 0.45);
+
+  color-scheme: light;
+}
+
+/* Low light: the paper goes to slate, the plates stay exactly as they are.
+   Same document, different lamp. */
+:root[data-theme="dark"] {
+  --paper:   #171b21;
+  --paper-2: #1e232b;
+  --paper-3: #262c35;
+  --rule:    #333b45;
+  --rule-2:  #4b5563;
+  --ink:     #e7ecf2;
+  --ink-2:   #a4b0bd;
+  --ink-3:   #7b8794;
+  --accent:  #7d90ff;
+  --accent-soft: #232a4d;
+  --flag:    #ff5a4d;
+  --shadow-plate: inset 0 0 0 1px #000, 0 2px 10px rgba(0,0,0,0.5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.45;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, output, table { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The repeated label device: engraved small caps, the way a printed chart
+   names its columns. */
+.tag {
+  display: block;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* ---------- Toolbar ---------- */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  height: var(--bar-h);
+  padding: 0 0.75rem;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* The whole title is the stamp: name reversed out of ultramarine, the same
+   block the instrument prints on its own output. */
+.wordmark {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0.2rem 0.45rem;
+  background: var(--accent);
+  color: var(--paper-3);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.capture {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.1rem;
+  padding: 0 0.85rem;
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.capture:hover { filter: brightness(1.08); }
+.capture[disabled] { opacity: 0.6; cursor: progress; }
+.capture.is-live { background: var(--flag); }
+.capture.is-paused { background: var(--ink-2); }
+
+.capture-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
+}
+.capture.is-live .capture-dot { background: #fff; animation: blink 1.15s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: 0.2; } }
+
+.menus { display: flex; gap: 0.25rem; margin-left: auto; }
+
+.menu { position: relative; }
+.menu > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2.1rem;
+  padding: 0 0.7rem;
+  border: 1px solid transparent;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary::after {
+  content: "";
+  width: 0; height: 0;
+  border: 3px solid transparent;
+  border-top-color: currentColor;
+  margin-top: 3px;
+}
+.menu > summary:hover { color: var(--ink); background: var(--paper); }
+.menu[open] > summary {
+  background: var(--paper-3);
+  border-color: var(--rule);
+  border-bottom-color: var(--paper-3);
+  color: var(--ink);
+}
+
+.menu-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 1px);
+  right: 0;
+  width: 18rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.8rem;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  box-shadow: 0 8px 24px rgba(16, 24, 32, 0.16);
+}
+.menu-rule { width: 100%; height: 1px; border: 0; margin: 0.2rem 0; background: var(--rule); }
+
+.icon-btn {
+  width: 2.1rem;
+  height: 2.1rem;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--rule);
+  font-size: 0.9rem;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.icon-btn:hover { background: var(--paper-3); color: var(--ink); }
+
+/* ---------- Summary strip ---------- */
+
+.summary {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  gap: 1px;
+  background: var(--rule);
+  border-bottom: 1px solid var(--rule);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.summary::-webkit-scrollbar { display: none; }
+
+.sum {
+  flex: 0 0 auto;
+  min-width: 7rem;
+  padding: 0.4rem 0.85rem 0.5rem;
+  background: var(--paper-2);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
+}
+.sum:last-child { flex: 1; }
+
+.sum-peak { min-width: 11rem; border-left: 3px solid var(--accent); }
+
+/* The one number you read across a room. Tight tracking and a big optical
+   size; the unit rides small so the digits stay dominant. */
+.sum-big {
+  margin: 0;
+  font-size: clamp(1.4rem, 3.2vw, 1.95rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.sum-big i {
+  font-style: normal;
+  font-size: 0.42em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-left: 0.3em;
+  color: var(--ink-3);
+}
+
+.sum-val {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.sum-val-sm { font-size: 0.75rem; font-weight: 500; color: var(--ink-2); }
+.sum-device { min-width: 10rem; overflow: hidden; }
+.sum-device .sum-val { overflow: hidden; text-overflow: ellipsis; }
+.sum-input { min-width: 9rem; gap: 0.25rem; }
+
+.vu {
+  position: relative;
+  height: 0.4rem;
+  background: var(--rule);
+  overflow: hidden;
+}
+.vu-fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 60ms linear;
+}
+.vu-peak {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  left: 0;
+  background: var(--ink);
+  transition: left 90ms linear;
+}
+.vu.clip .vu-fill { background: var(--flag); }
+
+/* ---------- Plates and ruler ---------- */
+
+.field-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0.6rem 0.75rem 0.75rem;
+}
+
+.plate {
+  position: relative;
+  min-height: 0;
+  background: var(--plate);
+  box-shadow: var(--shadow-plate);
+  touch-action: none;
+  cursor: crosshair;
+  overflow: hidden;
+}
+#spectrumPlot { flex: 1 1 36%; }
+#waterfallPlot { flex: 1 1 64%; }
+
+.field-view.no-waterfall #waterfallPlot { display: none; }
+.field-view.no-waterfall #spectrumPlot { flex: 1 1 100%; }
+
+.plate canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.overlay { pointer-events: none; }
+
+.plate-tag {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  z-index: 2;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.34);
+  pointer-events: none;
+}
+
+/* The ruler: a machined strip of paper between the two plates. Ticks are
+   engraved into it and markers are planted on it like pins. */
+.ruler {
+  position: relative;
+  flex: 0 0 3.1rem;
+  background: var(--paper-2);
+  border-top: 1px solid var(--rule-2);
+  border-bottom: 1px solid var(--rule-2);
+  touch-action: none;
+  cursor: ew-resize;
+}
+.ruler canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ruler.dragging { cursor: grabbing; }
+
+/* Zoom/pan pad: a small instrument plate that floats over the lower-right of
+   the plots. Square keys, sized for a thumb, coloured for the dark ground it
+   sits on rather than for the paper. */
+.pad {
+  position: absolute;
+  z-index: 10;
+  right: 1.15rem;
+  bottom: 1.2rem;
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  padding: 2px;
+  background: rgba(12, 16, 22, 0.74);
+  border: 1px solid rgba(226, 232, 240, 0.16);
+}
+
+.pad-btn {
+  width: 1.85rem;
+  height: 1.85rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: rgba(226, 232, 240, 0.06);
+  border: 0;
+  color: var(--plate-text);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pad-btn:hover { background: rgba(226, 232, 240, 0.16); color: #fff; }
+.pad-btn:active { background: rgba(226, 232, 240, 0.26); }
+
+.pad-sep { width: 1px; margin: 0.3rem 0.15rem; background: rgba(226, 232, 240, 0.18); }
+
+.tooltip {
+  position: absolute;
+  z-index: 12;
+  padding: 0.3rem 0.5rem;
+  background: var(--ink);
+  color: var(--paper-3);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -118%);
+}
+.tooltip.hidden { display: none; }
+.tooltip b { color: #fff; font-weight: 700; }
+
+.curtain {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  text-align: center;
+}
+.curtain.hidden { display: none; }
+.curtain-inner { max-width: 28rem; }
+.curtain-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.curtain.is-error .curtain-title { color: var(--flag); }
+.curtain-body {
+  margin: 0 0 1.1rem;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+/* ---------- Report table ---------- */
+
+.report {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 40vh;
+  background: var(--paper-2);
+  border-top: 1px solid var(--rule);
+}
+.report.collapsed .report-body { display: none; }
+
+.report-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+.report-title {
+  margin: 0;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.report-count {
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+.report-spacer { flex: 1; }
+
+.report-body { overflow: auto; }
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.report-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.3rem 0.6rem;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.report-table td {
+  padding: 0.25rem 0.6rem;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: middle;
+}
+.report-table tbody tr:hover { background: var(--paper-3); }
+.num-col, .num-cell {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.col-pin { width: 2.6rem; }
+.col-meter { width: 8rem; }
+.col-trend { width: 6.5rem; }
+
+/* Pin badge: the same number that appears on the ruler, so the table
+   row and the mark on the chart are obviously the same thing. */
+.pin-badge {
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  background: var(--pin-color, var(--accent));
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.cell-name {
+  width: 100%;
+  min-width: 5rem;
+  padding: 0.2rem 0.3rem;
+  background: transparent;
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+.cell-name:hover { border-color: var(--rule); }
+.cell-name:focus { background: var(--paper-3); border-color: var(--accent); outline: none; }
+
+.cell-num {
+  width: 5.2rem;
+  padding: 0.2rem 0.3rem;
+  background: transparent;
+  border: 1px solid transparent;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.cell-num:hover { border-color: var(--rule); }
+.cell-num:focus { background: var(--paper-3); border-color: var(--accent); outline: none; }
+.cell-num::-webkit-inner-spin-button { opacity: 0.3; }
+
+.row-meter {
+  position: relative;
+  height: 0.55rem;
+  background: var(--rule);
+  overflow: hidden;
+}
+.row-meter-fill {
+  height: 100%;
+  width: 0;
+  background: var(--pin-color, var(--accent));
+  transition: width 60ms linear;
+}
+.row-meter-peak {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: var(--ink);
+  opacity: 0;
+}
+.row-trend {
+  display: block;
+  width: 100%;
+  height: 1.6rem;
+  background: var(--paper-3);
+}
+.row-actions { text-align: right; white-space: nowrap; }
+
+/* ---------- Controls ---------- */
+
+.field { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.field-row { flex-direction: row; align-items: center; gap: 0.55rem; }
+.field-row .tag { width: 4.6rem; flex-shrink: 0; }
+
+input[type="number"], select {
+  flex: 1;
+  min-width: 0;
+  height: 2rem;
+  padding: 0 0.45rem;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+input[type="number"] { text-align: right; }
+select { cursor: pointer; }
+input[type="number"]:focus, select:focus { border-color: var(--accent); outline: none; }
+
+input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 1.5rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.num {
+  flex-shrink: 0;
+  width: 4.3rem;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.btn {
+  height: 2rem;
+  padding: 0 0.75rem;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--rule-2); background: var(--paper); }
+.btn-block { width: 100%; }
+.btn-primary {
+  height: 2.4rem;
+  padding: 0 1.2rem;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.btn-primary:hover { filter: brightness(1.08); background: var(--accent); }
+
+.seg { display: flex; border: 1px solid var(--rule); }
+.seg-btn {
+  flex: 1;
+  height: 1.9rem;
+  background: var(--paper-3);
+  border: 0;
+  font-size: 0.75rem;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.seg-btn + .seg-btn { border-left: 1px solid var(--rule); }
+.seg-btn.on { background: var(--accent); color: #fff; font-weight: 600; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.chip {
+  padding: 0.25rem 0.5rem;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  font-size: 0.6875rem;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+
+.link {
+  background: none;
+  border: 0;
+  padding: 0.1rem 0.2rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.link:hover { color: var(--accent); }
+.link-danger:hover { color: var(--flag); }
+
+.icon-cell {
+  width: 1.5rem;
+  height: 1.5rem;
+  background: transparent;
+  border: 0;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.icon-cell:hover { color: var(--ink); background: var(--rule); }
+.icon-cell.on { color: var(--accent); }
+.icon-cell.danger:hover { color: var(--flag); }
+
+.hint, .empty {
+  margin: 0;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.empty { padding: 0.8rem 0.75rem; }
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+  .sum-device, .sum-input { display: none; }
+  .col-trend, .col-meter { display: none; }
+  .report-table td:nth-child(6), .report-table td:nth-child(9) { display: none; }
+}
+
+@media (max-width: 620px) {
+  .bar { flex-wrap: wrap; height: auto; padding: 0.5rem 0.6rem; }
+  /* Wrapped, the menus drop to their own row so capture keeps its corner. */
+  .menus { order: 3; width: 100%; margin-left: 0; overflow-x: auto; }
+  .wordmark { margin-right: auto; }
+  .field-view { padding: 0.4rem; }
+  .pad { right: 0.75rem; bottom: 0.8rem; }
+  .report { max-height: 46vh; }
+  .report-table thead { display: none; }
+  .report-table, .report-table tbody, .report-table tr, .report-table td { display: block; width: 100%; }
+  .report-table tr {
+    display: grid;
+    grid-template-columns: 2.6rem 1fr auto;
+    align-items: center;
+    gap: 0.2rem 0.4rem;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .report-table td { border: 0; padding: 0; }
+  .report-table td:nth-child(4), .report-table td:nth-child(8) { display: none; }
+  .cell-num { width: 100%; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:   #171b21;
+    --paper-2: #1e232b;
+    --paper-3: #262c35;
+    --rule:    #333b45;
+    --rule-2:  #4b5563;
+    --ink:     #e7ecf2;
+    --ink-2:   #a4b0bd;
+    --ink-3:   #7b8794;
+    --accent:  #7d90ff;
+    --accent-soft: #232a4d;
+    --flag:    #ff5a4d;
+    --shadow-plate: inset 0 0 0 1px #000, 0 2px 10px rgba(0,0,0,0.5);
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .capture.is-live .capture-dot { opacity: 1; }
+}
