@@ -1,5 +1,8 @@
 # SoundRadar
 
+**[▶ Open the live app](https://atarantini.github.io/soundradar/)** — runs in
+your browser, nothing to install.
+
 A real-time audio spectrum analyzer and waterfall that runs entirely in your
 browser. Point a microphone at a room, a motor, a speaker or a wall, and read
 what is actually in the air — no install, no account, no upload.
