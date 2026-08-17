@@ -75,15 +75,16 @@ function currentThemeIsDark() {
   return matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
+// Low light is the default; a stored choice wins once the user has picked one.
 try {
-  applyTheme(localStorage.getItem(THEME_KEY));
+  applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 } catch {
-  /* storage unavailable */
+  applyTheme('dark');
 }
 
 // ---------- state ----------
 
-const settings = new Settings('soundradar.settings.v1', { colorMap: 'viridis' });
+const settings = new Settings('soundradar.settings.v1', { colorMap: 'viridis', freqScale: 'linear' });
 const engine = new AudioEngine();
 const markers = new MarkerStore({ storageKey: 'soundradar.markers.v1', palette: PALETTE });
 

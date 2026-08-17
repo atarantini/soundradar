@@ -35,8 +35,8 @@ size/range/scale settings.
 - **Min frequency / Max frequency** — clamps and zooms the displayed range
   (e.g. default 40 Hz – 20,000 Hz, adjustable via numeric inputs or a
   dual-handle slider).
-- **Scale**: logarithmic (default, matches human hearing) or linear —
-  toggle.
+- **Scale**: linear (default, even Hz-per-pixel) or logarithmic (matches
+  human hearing) — toggle.
 
 ### Amplitude (dB) axis
 - **Min dB / Max dB** — sets the color/height mapping range (e.g. default
