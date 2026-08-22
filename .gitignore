@@ -13,6 +13,7 @@
 Thumbs.db
 
 # Local notes and captures
+TODO.md
 *.local.md
 soundradar-*.png
 soundradar-*.csv
