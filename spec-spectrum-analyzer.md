@@ -72,6 +72,18 @@ size/range/scale settings.
 - Pause/resume capture.
 - Reset-to-defaults button.
 
+### Sessions and data
+- Everything above, plus the marker list, belongs to a **session** — a named
+  save state picked from the toolbar (see `SPEC.md`). New/rename/duplicate/
+  delete live there; the app opens in `default` on a fresh browser and in
+  whichever session was last active after that. Switching is immediate and
+  needs no explicit save.
+- **Export everything as JSON** writes every session, with its settings and
+  markers, to one file; **Import** reads that file back and adds its sessions
+  alongside the existing ones (fresh ids, de-duplicated names) so a restore
+  is never destructive. The marker-table CSV export is unchanged and remains
+  the readout-oriented export.
+
 ## UI sizing
 
 There is no top header or settings bar — all controls live in a single
@@ -142,9 +154,23 @@ below.
   yellow/orange to red as the level rises — and a 📈 toggle on the row opens
   a small live line chart (auto-scaled to recent history) of that marker's
   dB over time.
+- **Alarm / finder**: each marker can be armed with a trigger level (dB).
+  While its band sits at or above that level the app sounds a short beep,
+  whose pitch and repetition rate both rise with the level — mapped from the
+  trigger level up to the display ceiling, so the same gesture that sets the
+  dB window also sets the alarm's sensitivity. The pitch sweeps 700 Hz to
+  5.6 kHz: high enough to carry over machine noise and to sit clear of the
+  low-frequency rumble usually being hunted. Intended for localizing a source
+  by ear while walking with the mic, hands and eyes elsewhere. A master
+  volume, a mute and a "disable all alarms" button live with the display
+  settings; the mute is also one click away in the markers report, because an
+  alarm you cannot silence quickly is an alarm people switch off for good.
+  Mute and disable are deliberately distinct: mute is the stop button (arming
+  survives), disable is the off switch (every marker disarmed). The tone is
+  generated on the shared `AudioContext`, so pausing capture silences it.
 - Markers persist across FFT size / range changes (frequency-based, not
-  pixel-based), and are saved to `localStorage` so they survive page
-  reloads. Cleared only via the explicit "clear markers" action.
+  pixel-based), and are saved with the active session (see below) so they
+  survive page reloads. Cleared only via the explicit "clear markers" action.
 - Optional (future): click-drag an existing marker to reposition it.
 
 ## Layout (current)

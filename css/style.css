@@ -209,6 +209,20 @@ button, input, select, output, table { font: inherit; color: inherit; }
 }
 .menu-rule { width: 100%; height: 1px; border: 0; margin: 0.2rem 0; background: var(--rule); }
 
+/* The one menu that names its own state: which session you are working in has
+   to be readable without opening anything. */
+.menu-badge {
+  min-width: 0;
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.menu[open] > summary .menu-badge { color: var(--accent); }
+
 .icon-btn {
   width: 2.1rem;
   height: 2.1rem;
@@ -531,6 +545,8 @@ button, input, select, output, table { font: inherit; color: inherit; }
 .col-pin { width: 2.6rem; }
 .col-meter { width: 8rem; }
 .col-trend { width: 6.5rem; }
+.col-alarm { width: 7.6rem; white-space: nowrap; }
+.col-alarm .icon-cell, .col-alarm .cell-num { vertical-align: middle; }
 
 /* Pin badge: the same number that appears on the ruler, so the table
    row and the mark on the chart are obviously the same thing. */
@@ -660,6 +676,8 @@ input[type="checkbox"] {
   cursor: pointer;
 }
 .btn:hover { border-color: var(--rule-2); background: var(--paper); }
+.btn[disabled] { opacity: 0.45; cursor: default; }
+.btn[disabled]:hover { border-color: var(--rule); background: var(--paper-3); }
 .btn-block { width: 100%; }
 .btn-primary {
   height: 2.4rem;
@@ -694,6 +712,7 @@ input[type="checkbox"] {
   cursor: pointer;
 }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip-danger:hover { border-color: var(--flag); color: var(--flag); }
 
 .link {
   background: none;
@@ -707,6 +726,7 @@ input[type="checkbox"] {
   cursor: pointer;
 }
 .link:hover { color: var(--accent); }
+.link.on { color: var(--flag); }
 .link-danger:hover { color: var(--flag); }
 
 .icon-cell {
@@ -722,6 +742,14 @@ input[type="checkbox"] {
 .icon-cell.on { color: var(--accent); }
 .icon-cell.danger:hover { color: var(--flag); }
 
+/* The finder. An armed bell is flagged red because it can make noise; while it
+   is actually beeping it inverts, so the row that is sounding is unmistakable
+   in a list of ten. */
+.alarm-bell.on { color: var(--flag); }
+.alarm-bell.is-sounding { background: var(--flag); color: #fff; animation: alarm-pulse 0.5s ease-in-out infinite; }
+@keyframes alarm-pulse { 50% { opacity: 0.4; } }
+.cell-trigger { width: 4.3rem; }
+
 .hint, .empty {
   margin: 0;
   font-size: 0.6875rem;
@@ -730,13 +758,15 @@ input[type="checkbox"] {
   text-wrap: pretty;
 }
 .empty { padding: 0.8rem 0.75rem; }
+.hint.is-error { color: var(--flag); }
 
 /* ---------- Responsive ---------- */
 
 @media (max-width: 900px) {
   .sum-device, .sum-input { display: none; }
-  .col-trend, .col-meter { display: none; }
-  .report-table td:nth-child(6), .report-table td:nth-child(9) { display: none; }
+  /* The two widest, most decorative columns go first: the numbers they
+     illustrate are still in the row. */
+  .report-table .col-meter, .report-table .col-trend { display: none; }
 }
 
 @media (max-width: 620px) {
@@ -758,8 +788,12 @@ input[type="checkbox"] {
     border-bottom: 1px solid var(--rule);
   }
   .report-table td { border: 0; padding: 0; }
-  .report-table td:nth-child(4), .report-table td:nth-child(8) { display: none; }
+  /* Bandwidth goes, the alarm stays: hunting a noise by ear with a phone in
+     one hand is exactly what the finder is for. */
+  .report-table .col-band { display: none; }
   .cell-num { width: 100%; }
+  .col-alarm { width: auto; }
+  .cell-trigger { width: 4.3rem; }
 }
 
 @media (prefers-color-scheme: dark) {

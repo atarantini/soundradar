@@ -24,6 +24,8 @@ export const BASE_DEFAULTS = {
   spectrumFill: true,
   showHearingBand: true,
   markerBw: 50,
+  alarmVolume: 0.25,
+  alarmMuted: false,
 };
 
 export const WATERFALL_SPANS = [5, 10, 20, 30, 60, 120];
@@ -51,11 +53,16 @@ export function normalize(s, nyquist = 24000) {
   s.peakDecay = clamp(Number(s.peakDecay) || BASE_DEFAULTS.peakDecay, 1, 60);
   s.persistence = clamp(Number(s.persistence) || 0, 0, 0.95);
   s.markerBw = clamp(Number(s.markerBw) || BASE_DEFAULTS.markerBw, 1, 5000);
+  // Not the `Number(x) || default` idiom used above: a volume of 0 is a real
+  // value (silent alarms) and must survive the round trip.
+  const vol = Number(s.alarmVolume);
+  s.alarmVolume = clamp(Number.isFinite(vol) ? vol : BASE_DEFAULTS.alarmVolume, 0, 1);
 
   s.waterfallOn = Boolean(s.waterfallOn);
   s.peakHold = Boolean(s.peakHold);
   s.spectrumFill = Boolean(s.spectrumFill);
   s.showHearingBand = Boolean(s.showHearingBand);
+  s.alarmMuted = Boolean(s.alarmMuted);
   return s;
 }
 
@@ -115,6 +122,16 @@ export class Settings {
   setNyquist(nyquist) {
     this.nyquist = nyquist;
     normalize(this.values, nyquist);
+  }
+
+  /**
+   * Point at another saved state — a session switch — and reload from it.
+   * Listeners are told 'all', because every value may have changed.
+   */
+  useStorage(storageKey) {
+    this.storageKey = storageKey;
+    this.values = normalize({ ...this.defaults, ...this._read() }, this.nyquist);
+    for (const fn of this.listeners) fn(this.values, new Set(['all']), this.values);
   }
 
   reset(tags = ['all']) {

@@ -1,6 +1,10 @@
 // The markers report: one table row per marker, numbered to match its pin on
 // the ruler. Rows are built when the list changes and mutated in place after
 // that, so editing a field is never interrupted by a redraw.
+//
+// Every cell carries the same `col-*` class as its column header, so the
+// responsive rules can hide a whole column by name instead of counting
+// `nth-child` positions that shift whenever a column is added.
 
 import { levelFraction } from './core/markers.js';
 import { dpr, formatFreq, resizeCanvasToDisplaySize } from './core/util.js';
@@ -32,12 +36,14 @@ export class MarkersTable {
 
       // Pin number — the same badge that appears on the ruler.
       const pin = document.createElement('td');
+      pin.className = 'col-pin';
       const badge = document.createElement('span');
       badge.className = 'pin-badge';
       badge.textContent = String(index + 1);
       pin.append(badge);
 
       const nameCell = document.createElement('td');
+      nameCell.className = 'col-name';
       const name = document.createElement('input');
       name.type = 'text';
       name.className = 'cell-name';
@@ -47,18 +53,19 @@ export class MarkersTable {
       nameCell.append(name);
 
       const freqCell = document.createElement('td');
-      freqCell.className = 'num-cell';
+      freqCell.className = 'num-cell col-freq';
       const freq = numberInput(m.freq, `Frequency of marker ${index + 1} in hertz`);
       freq.addEventListener('change', () => this.store.update(m.id, { freq: Number(freq.value) }));
       freqCell.append(freq);
 
       const bwCell = document.createElement('td');
-      bwCell.className = 'num-cell';
+      bwCell.className = 'num-cell col-band';
       const bw = numberInput(m.bw, `Bandwidth of marker ${index + 1} in hertz`);
       bw.addEventListener('change', () => this.store.update(m.id, { bw: Number(bw.value) }));
       bwCell.append(bw);
 
       const meterCell = document.createElement('td');
+      meterCell.className = 'col-meter';
       const meter = document.createElement('div');
       meter.className = 'row-meter';
       const fill = document.createElement('div');
@@ -69,20 +76,36 @@ export class MarkersTable {
       meterCell.append(meter);
 
       const nowCell = document.createElement('td');
-      nowCell.className = 'num-cell';
+      nowCell.className = 'num-cell col-now';
       nowCell.textContent = '—';
 
       const peakCell = document.createElement('td');
-      peakCell.className = 'num-cell';
+      peakCell.className = 'num-cell col-peak';
       peakCell.textContent = '—';
 
       const trendCell = document.createElement('td');
+      trendCell.className = 'col-trend';
       const trend = document.createElement('canvas');
       trend.className = 'row-trend';
       trendCell.append(trend);
 
+      // The finder: a bell that arms the marker, and the level that arms it.
+      const alarmCell = document.createElement('td');
+      alarmCell.className = 'col-alarm';
+      const bell = iconButton('\u25C9', `Alarm on marker ${index + 1}`);
+      bell.classList.add('alarm-bell');
+      bell.classList.toggle('on', m.alarm);
+      bell.setAttribute('aria-pressed', String(Boolean(m.alarm)));
+      bell.addEventListener('click', () => this.store.update(m.id, { alarm: !m.alarm }));
+      const trigger = numberInput(m.alarmDb, `Alarm level of marker ${index + 1} in decibels`);
+      trigger.classList.add('cell-trigger');
+      trigger.min = '-150';
+      trigger.max = '0';
+      trigger.addEventListener('change', () => this.store.update(m.id, { alarmDb: Number(trigger.value) }));
+      alarmCell.append(bell, trigger);
+
       const actions = document.createElement('td');
-      actions.className = 'row-actions';
+      actions.className = 'row-actions col-actions';
       const up = iconButton('▲', `Move marker ${index + 1} up`);
       up.disabled = index === 0;
       up.addEventListener('click', () => this.store.move(m.id, -1));
@@ -94,20 +117,25 @@ export class MarkersTable {
       remove.addEventListener('click', () => this.store.remove(m.id));
       actions.append(up, down, remove);
 
-      tr.append(pin, nameCell, freqCell, bwCell, meterCell, nowCell, peakCell, trendCell, actions);
+      tr.append(pin, nameCell, freqCell, bwCell, meterCell, nowCell, peakCell, trendCell, alarmCell, actions);
       this.bodyEl.append(tr);
       this.rows.set(m.id, {
-        freq, bw, fill, peakMark, nowCell, peakCell,
+        freq, bw, fill, peakMark, nowCell, peakCell, bell,
         trend, ctx: trend.getContext('2d'),
       });
     });
   }
 
-  update(settings) {
+  /**
+   * @param {object} settings
+   * @param {Set<number>} [sounding] ids whose alarm is beeping right now
+   */
+  update(settings, sounding) {
     for (const m of this.store.markers) {
       const row = this.rows.get(m.id);
       if (!row) continue;
       const level = this.store.level(m.id);
+      row.bell.classList.toggle('is-sounding', Boolean(sounding?.has(m.id)));
 
       if (Number.isFinite(level.db)) {
         const t = levelFraction(level.db, settings.minDb, settings.maxDb);

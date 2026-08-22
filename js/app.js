@@ -6,6 +6,8 @@
 import { AudioEngine, FFT_SIZES, checkSupport } from './core/audio.js';
 import { Settings, WATERFALL_SPANS, MIN_SPAN_HZ } from './core/settings.js';
 import { MarkerStore } from './core/markers.js';
+import { SessionStore, DEFAULT_SESSION_ID } from './core/sessions.js';
+import { AlarmTone } from './core/alarm.js';
 import { SpectrumView } from './core/spectrum.js';
 import { Waterfall } from './core/waterfall.js';
 import { PlotInput, zoomRange, panRange } from './core/input.js';
@@ -26,6 +28,8 @@ import { MarkersTable } from './markers-table.js';
 
 const GUTTER_L = 44; // CSS px reserved for the dB / time axis on each plate
 const THEME_KEY = 'soundradar.theme';
+const SESSIONS_KEY = 'soundradar.sessions.v1';
+const SESSION_PREFIX = 'soundradar.s.'; // + `<id>.settings.v1` / `<id>.markers.v1`
 
 const PALETTE = ['#2a3fd4', '#0f9d58', '#d4762a', '#8e44c4', '#c02b5e', '#0d8ea8', '#7a8c1f', '#b8342b'];
 
@@ -44,6 +48,10 @@ for (const [from, to] of [
   ['soundrad.theme', THEME_KEY],
   ['soundrad.settings.v1', 'soundradar.settings.v1'],
   ['soundrad.markers.v1', 'soundradar.markers.v1'],
+  // Sessions arrived after these: what used to be the app's one saved state is
+  // now the "default" session's, which is the session the app opens in.
+  ['soundradar.settings.v1', `${SESSION_PREFIX}${DEFAULT_SESSION_ID}.settings.v1`],
+  ['soundradar.markers.v1', `${SESSION_PREFIX}${DEFAULT_SESSION_ID}.markers.v1`],
 ]) {
   try {
     const saved = localStorage.getItem(from);
@@ -84,9 +92,13 @@ try {
 
 // ---------- state ----------
 
-const settings = new Settings('soundradar.settings.v1', { colorMap: 'viridis', freqScale: 'linear' });
+const sessions = new SessionStore({ indexKey: SESSIONS_KEY, prefix: SESSION_PREFIX });
+const sessionKeys = sessions.keysFor(sessions.activeId);
+
+const settings = new Settings(sessionKeys.settings, { colorMap: 'viridis', freqScale: 'linear' });
 const engine = new AudioEngine();
-const markers = new MarkerStore({ storageKey: 'soundradar.markers.v1', palette: PALETTE });
+const markers = new MarkerStore({ storageKey: sessionKeys.markers, palette: PALETTE });
+const alarm = new AlarmTone({ getContext: () => engine.ctx });
 
 const spectrumCanvas = $('spectrumCanvas');
 const spectrumOverlay = $('spectrumOverlay');
@@ -209,6 +221,13 @@ function syncControls() {
   $('colorMap').value = s.colorMap;
   $('spectrumFill').checked = s.spectrumFill;
   $('showHearingBand').checked = s.showHearingBand;
+  $('alarmVolume').value = String(s.alarmVolume);
+  $('alarmVolumeVal').value = `${Math.round(s.alarmVolume * 100)}%`;
+  $('alarmMuted').checked = s.alarmMuted;
+  const muteBtn = $('alarmMuteToggle');
+  muteBtn.classList.toggle('on', s.alarmMuted);
+  muteBtn.setAttribute('aria-pressed', String(s.alarmMuted));
+  muteBtn.textContent = s.alarmMuted ? 'Alarms muted' : 'Mute alarms';
 
   fieldView.classList.toggle('no-waterfall', !s.waterfallOn);
   $('roBin').textContent = engine.running ? `${engine.binHz.toFixed(1)} Hz` : '—';
@@ -312,6 +331,24 @@ $('waterfallSpan').addEventListener('change', (e) => settings.set({ waterfallSpa
 $('colorMap').addEventListener('change', (e) => settings.set({ colorMap: e.target.value }, ['palette']));
 $('spectrumFill').addEventListener('change', (e) => settings.set({ spectrumFill: e.target.checked }, []));
 $('showHearingBand').addEventListener('change', (e) => settings.set({ showHearingBand: e.target.checked }, []));
+$('alarmVolume').addEventListener('input', (e) => settings.set({ alarmVolume: Number(e.target.value) }, []));
+$('alarmMuted').addEventListener('change', (e) => settings.set({ alarmMuted: e.target.checked }, []));
+$('alarmMuteToggle').addEventListener('click', () => settings.set({ alarmMuted: !settings.v.alarmMuted }, []));
+
+// Muting is a stop button; this is the off switch. Nothing to confirm — the
+// bells are still in the report, one click each from being armed again.
+$('alarmDisableAll').addEventListener('click', () => {
+  if (!markers.disableAllAlarms()) return;
+  alarm.reset();
+  needsIdleDraw = true;
+});
+
+// Only offer the bulk action when there is something to switch off.
+function syncAlarmActions() {
+  $('alarmDisableAll').disabled = markers.armedCount() === 0;
+}
+markers.subscribe(syncAlarmActions);
+syncAlarmActions();
 
 $('savePng').addEventListener('click', savePng);
 $('resetAll').addEventListener('click', () => {
@@ -336,6 +373,116 @@ document.addEventListener('pointerdown', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   for (const menu of menus) menu.open = false;
+});
+
+// ---------- sessions ----------
+
+// A session is the storage the live state reads and writes, so switching one is
+// just re-pointing both stores and repainting. Nothing is "saved" on the way
+// out: every edit already went into the session it was made in.
+function activateSession(id) {
+  if (!sessions.has(id)) return;
+  sessions.setActive(id);
+  const keys = sessions.keysFor(id);
+  settings.useStorage(keys.settings); // notifies 'all' → controls, engine, plots
+  markers.useStorage(keys.markers);
+  alarm.reset();
+  spectrum.resetPeaks();
+  waterfall.clear();
+  layout();
+  renderSessions();
+  needsIdleDraw = true;
+}
+
+function renderSessions() {
+  const select = $('sessionSelect');
+  const list = sessions.list();
+  select.replaceChildren();
+  for (const s of list) select.append(new Option(s.name, s.id));
+  select.value = sessions.activeId;
+  $('sessionName').textContent = sessions.active()?.name || '—';
+  // The roster can never be empty, so the last session cannot be deleted.
+  $('sessionDelete').disabled = list.length <= 1;
+}
+
+// `updatedAt` is what orders the picker in a future listing and tells the user
+// which session they were last in; it does not need to be written on every
+// frame of a slider drag.
+const touchSession = debounce(() => sessions.touch(), 600);
+settings.subscribe(() => touchSession());
+markers.subscribe(() => touchSession());
+
+$('sessionSelect').addEventListener('change', (e) => activateSession(e.target.value));
+
+$('sessionNew').addEventListener('click', () => {
+  const name = prompt('Name for the new session', sessions.uniqueName('Session'));
+  if (name === null) return;
+  activateSession(sessions.create(name).id);
+});
+
+$('sessionDuplicate').addEventListener('click', () => {
+  const current = sessions.active();
+  const name = prompt('Name for the copy', sessions.uniqueName(`${current.name} copy`));
+  if (name === null) return;
+  const copy = sessions.duplicate(current.id, name);
+  if (copy) activateSession(copy.id);
+});
+
+$('sessionRename').addEventListener('click', () => {
+  const current = sessions.active();
+  const name = prompt('Rename this session', current.name);
+  if (name === null) return;
+  sessions.rename(current.id, name);
+  renderSessions();
+});
+
+$('sessionDelete').addEventListener('click', () => {
+  const current = sessions.active();
+  if (sessions.list().length <= 1) return;
+  if (!confirm(`Delete the session “${current.name}” with its settings and markers? This cannot be undone.`)) return;
+  sessions.remove(current.id);
+  activateSession(sessions.activeId); // remove() already moved us to a survivor
+  renderSessions();
+});
+
+// ---------- export / import ----------
+
+const DATA_HINT = $('dataHint').textContent;
+
+/** Report the outcome of an export/import in place, then fade back to the hint. */
+function dataNote(message, isError = false) {
+  const el = $('dataHint');
+  el.textContent = message;
+  el.classList.toggle('is-error', isError);
+  clearTimeout(dataNote.timer);
+  dataNote.timer = setTimeout(() => {
+    el.textContent = DATA_HINT;
+    el.classList.remove('is-error');
+  }, 6000);
+}
+
+$('exportData').addEventListener('click', () => {
+  const data = sessions.exportAll({ theme: localStorage.getItem(THEME_KEY) || null });
+  downloadBlob(
+    new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
+    `${timestampSlug('soundradar-data')}.json`
+  );
+  dataNote(`Exported ${data.sessions.length} session${data.sessions.length === 1 ? '' : 's'}.`);
+});
+
+$('importData').addEventListener('click', () => $('importFile').click());
+
+$('importFile').addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = ''; // so picking the same file twice fires the event twice
+  if (!file) return;
+  try {
+    const { added } = sessions.importAll(await file.text());
+    renderSessions();
+    dataNote(`Imported ${added} session${added === 1 ? '' : 's'}. Pick one above to open it.`);
+  } catch (err) {
+    dataNote(err.message || 'That file could not be imported.', true);
+  }
 });
 
 // ---------- report ----------
@@ -391,6 +538,9 @@ function paintState() {
     curtain.classList.add('hidden');
   }
   syncControls();
+  // Pausing suspends the context: one more frame lets the alarms notice and the
+  // report drop their "sounding" flags.
+  needsIdleDraw = true;
 }
 
 engine.onstatechange = paintState;
@@ -654,8 +804,14 @@ function hexA(hex, alpha) {
 
 // ---------- readout ----------
 
-function updateReadout(now) {
-  if (now - lastReadoutAt < 100) return;
+/**
+ * @param {boolean} force  redraw even inside the throttle window. A frame drawn
+ *   only because something changed (a pause, a hover) may be the last one for a
+ *   while, so the readout cannot be allowed to skip it and leave stale numbers
+ *   — or a stale "sounding" flag — on screen.
+ */
+function updateReadout(now, force) {
+  if (!force && now - lastReadoutAt < 100) return;
   lastReadoutAt = now;
 
   if (dominant) {
@@ -685,7 +841,7 @@ function updateReadout(now) {
     vu.classList.remove('clip');
   }
 
-  table.update(settings.v);
+  table.update(settings.v, alarm.active);
 }
 
 // ---------- main loop ----------
@@ -699,6 +855,7 @@ function frame(now) {
     requestAnimationFrame(frame);
     return;
   }
+  const idleDraw = needsIdleDraw;
   needsIdleDraw = false;
 
   spectrum.draw({
@@ -711,6 +868,13 @@ function frame(now) {
   });
 
   markers.updateLevels(latestData, engine.sampleRate, engine.fftSize, live);
+  alarm.update({
+    markers: markers.markers,
+    levelOf: (id) => markers.level(id),
+    ceilingDb: s.maxDb,
+    volume: s.alarmMuted ? 0 : s.alarmVolume,
+    live,
+  });
   dominant = latestData ? findDominantPeak(latestData, s, engine.sampleRate, engine.fftSize, s.minDb) : null;
 
   drawOverlay(spectrumOverlayCtx, spectrumOverlay, spectrum.rect, 'spectrum');
@@ -729,7 +893,7 @@ function frame(now) {
     selection: selection && selection.view === 'ruler' ? selection : null,
   });
 
-  updateReadout(now);
+  updateReadout(now, idleDraw);
   requestAnimationFrame(frame);
 }
 
@@ -803,6 +967,7 @@ const support = checkSupport();
 if (!support.ok) engine.error = support.reason;
 
 settings.setNyquist(24000);
+renderSessions();
 layout();
 syncControls();
 paintState();

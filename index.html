@@ -20,6 +20,28 @@
   <span class="wordmark">SoundRadar</span>
 
   <nav class="menus" aria-label="Display settings">
+    <details class="menu" id="menuSession">
+      <summary>Session <b class="menu-badge" id="sessionName">Default</b></summary>
+      <div class="menu-panel">
+        <label class="field field-row"><span class="tag">Active</span>
+          <select id="sessionSelect"></select>
+        </label>
+        <div class="chips">
+          <button type="button" class="chip" id="sessionNew">New</button>
+          <button type="button" class="chip" id="sessionRename">Rename</button>
+          <button type="button" class="chip" id="sessionDuplicate">Duplicate</button>
+          <button type="button" class="chip chip-danger" id="sessionDelete">Delete</button>
+        </div>
+        <p class="hint">A session keeps its own display settings and markers. Switching saves nothing by hand — every change is already written to the session you are in.</p>
+        <hr class="menu-rule">
+        <p class="tag">All data</p>
+        <button class="btn btn-block" id="exportData" type="button">Export everything as JSON</button>
+        <button class="btn btn-block" id="importData" type="button">Import from JSON…</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <p class="hint" id="dataHint">Imported sessions are added alongside the ones already here, never on top of them.</p>
+      </div>
+    </details>
+
     <details class="menu" id="menuSpan">
       <summary>Span</summary>
       <div class="menu-panel">
@@ -94,6 +116,15 @@
         </label>
         <label class="check"><input type="checkbox" id="spectrumFill"><span>Fill under trace</span></label>
         <label class="check"><input type="checkbox" id="showHearingBand"><span>Dim inaudible range</span></label>
+        <hr class="menu-rule">
+        <p class="tag">Marker alarm</p>
+        <label class="field field-row"><span class="tag">Volume</span>
+          <input type="range" id="alarmVolume" min="0" max="1" step="0.05">
+          <output class="num" id="alarmVolumeVal">25%</output>
+        </label>
+        <label class="check"><input type="checkbox" id="alarmMuted"><span>Mute alarms</span></label>
+        <button class="btn btn-block" id="alarmDisableAll" type="button">Disable all alarms</button>
+        <p class="hint">Arm the alarm on a marker in the report, and it beeps whenever that band reaches its level &mdash; higher and faster the louder it gets, so you can find a source by ear. Muting silences every alarm but leaves it armed; disabling switches them all off. Wear headphones: over speakers the beep feeds back into the microphone.</p>
         <hr class="menu-rule">
         <label class="field field-row"><span class="tag">Input</span>
           <select id="deviceSelect"><option value="">System default</option></select>
@@ -177,6 +208,7 @@
     <h2 class="report-title">Markers</h2>
     <span class="report-count" id="markerCount">0</span>
     <span class="report-spacer"></span>
+    <button class="link" id="alarmMuteToggle" type="button" aria-pressed="false" title="Silence every marker alarm">Mute alarms</button>
     <button class="link" id="markHarmonics" type="button" title="Add markers on the harmonics of the loudest frequency">Mark harmonics</button>
     <button class="link" id="exportMarkers" type="button">Export CSV</button>
     <button class="link link-danger" id="clearMarkers" type="button">Clear</button>
@@ -187,14 +219,15 @@
       <thead>
         <tr>
           <th scope="col" class="col-pin">Pin</th>
-          <th scope="col">Name</th>
-          <th scope="col" class="num-col">Frequency</th>
-          <th scope="col" class="num-col">Band</th>
+          <th scope="col" class="col-name">Name</th>
+          <th scope="col" class="num-col col-freq">Frequency</th>
+          <th scope="col" class="num-col col-band">Band</th>
           <th scope="col" class="col-meter">Level</th>
-          <th scope="col" class="num-col">Now</th>
-          <th scope="col" class="num-col">Peak</th>
+          <th scope="col" class="num-col col-now">Now</th>
+          <th scope="col" class="num-col col-peak">Peak</th>
           <th scope="col" class="col-trend">Trend</th>
-          <th scope="col"><span class="sr-only">Actions</span></th>
+          <th scope="col" class="col-alarm">Alarm</th>
+          <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
         </tr>
       </thead>
       <tbody id="markerRows"></tbody>

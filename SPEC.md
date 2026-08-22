@@ -23,6 +23,20 @@ entirely client-side using the Web Audio API.
 - Permission/error states (denied mic, no devices, insecure context) surfaced
   to the user, not silently failed.
 
+## Saved state (shared across tools)
+
+- **Sessions**: every saved thing belongs to a named session — display
+  settings and markers today, whatever a future tool saves tomorrow. Sessions
+  are switched from the toolbar, and the app always opens in a session
+  (`default` on a fresh browser). Storage is the browser's `localStorage`,
+  under `soundradar.s.<id>.*`, with the roster in `soundradar.sessions.v1`.
+- **Portability**: one JSON file carries every session, so a survey can move
+  between machines or be attached to a report. Import merges rather than
+  replaces — restoring a backup must never cost the reader the work already
+  in front of them.
+- The theme is the deliberate exception: it belongs to the browser, not to a
+  measurement, so it lives outside sessions and is not applied by an import.
+
 ## Tools (planned)
 
 1. **Spectrum Analyzer** — see [`spec-spectrum-analyzer.md`](./spec-spectrum-analyzer.md) (first tool, in progress)

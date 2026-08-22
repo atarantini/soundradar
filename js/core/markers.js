@@ -8,6 +8,7 @@
 
 import { bandPeak } from './scale.js';
 import { clamp } from './util.js';
+import { DEFAULT_ALARM_DB } from './alarm.js';
 
 export const DEFAULT_BANDWIDTH_HZ = 50;
 const HISTORY_LEN = 300;
@@ -60,6 +61,8 @@ export class MarkerStore {
         color: typeof m.color === 'string' ? m.color : this.palette[i % this.palette.length],
         chart: Boolean(m.chart),
         muted: Boolean(m.muted),
+        alarm: Boolean(m.alarm),
+        alarmDb: alarmDbOf(m.alarmDb),
       }));
     this.nextId = this.markers.reduce((max, m) => Math.max(max, m.id), 0) + 1;
     for (const m of this.markers) this._resetHistory(m.id);
@@ -71,6 +74,18 @@ export class MarkerStore {
     } catch {
       // Private mode or a full quota: markers still work for this session.
     }
+  }
+
+  /**
+   * Point at another saved list — a session switch — and reload from it.
+   * Levels and history belong to the old list, so they go with it.
+   */
+  useStorage(storageKey) {
+    this.storageKey = storageKey;
+    this.levels.clear();
+    this.history.clear();
+    this.load();
+    for (const fn of this.listeners) fn(this.markers);
   }
 
   _resetHistory(id) {
@@ -86,6 +101,8 @@ export class MarkerStore {
       color: opts.color ?? this.palette[this.markers.length % this.palette.length],
       chart: false,
       muted: false,
+      alarm: Boolean(opts.alarm),
+      alarmDb: alarmDbOf(opts.alarmDb),
     };
     this.markers.unshift(m); // newest first, where the eye lands
     this._resetHistory(m.id);
@@ -104,6 +121,8 @@ export class MarkerStore {
         color: e.color ?? this.palette[(this.markers.length + i) % this.palette.length],
         chart: false,
         muted: false,
+        alarm: Boolean(e.alarm),
+        alarmDb: alarmDbOf(e.alarmDb),
       };
       this._resetHistory(m.id);
       return m;
@@ -131,6 +150,7 @@ export class MarkerStore {
     if (!m) return;
     if (patch.freq !== undefined) patch.freq = Math.max(1, Number(patch.freq) || m.freq);
     if (patch.bw !== undefined) patch.bw = Math.max(1, Number(patch.bw) || m.bw);
+    if (patch.alarmDb !== undefined) patch.alarmDb = alarmDbOf(patch.alarmDb, m.alarmDb);
     Object.assign(m, patch);
     this._changed();
   }
@@ -141,6 +161,24 @@ export class MarkerStore {
     if (i === -1 || j < 0 || j >= this.markers.length) return;
     [this.markers[i], this.markers[j]] = [this.markers[j], this.markers[i]];
     this._changed();
+  }
+
+  /** Number of markers whose alarm is armed. */
+  armedCount() {
+    return this.markers.reduce((n, m) => n + (m.alarm ? 1 : 0), 0);
+  }
+
+  /**
+   * Disarm every alarm at once. One notification rather than one per marker,
+   * so the report rebuilds a single time.
+   * @returns {number} how many were armed
+   */
+  disableAllAlarms() {
+    const armed = this.markers.filter((m) => m.alarm);
+    if (!armed.length) return 0;
+    for (const m of armed) m.alarm = false;
+    this._changed();
+    return armed.length;
   }
 
   clear() {
@@ -218,7 +256,9 @@ export class MarkerStore {
 
   toJson() {
     return JSON.stringify(
-      this.markers.map((m) => ({ name: m.name, freq: m.freq, bw: m.bw, color: m.color })),
+      this.markers.map((m) => ({
+        name: m.name, freq: m.freq, bw: m.bw, color: m.color, alarm: m.alarm, alarmDb: m.alarmDb,
+      })),
       null,
       2
     );
@@ -235,11 +275,24 @@ export class MarkerStore {
     if (!Array.isArray(parsed)) throw new Error('That file does not contain a marker list.');
     const entries = parsed
       .filter((m) => m && Number.isFinite(Number(m.freq)))
-      .map((m) => ({ freq: Number(m.freq), bw: Number(m.bw) || DEFAULT_BANDWIDTH_HZ, name: m.name, color: m.color }));
+      .map((m) => ({
+        freq: Number(m.freq),
+        bw: Number(m.bw) || DEFAULT_BANDWIDTH_HZ,
+        name: m.name,
+        color: m.color,
+        alarm: m.alarm,
+        alarmDb: m.alarmDb,
+      }));
     if (!entries.length) throw new Error('That file does not contain a marker list.');
     this.addMany(entries);
     return entries.length;
   }
+}
+
+/** A usable alarm trigger level: anything unreadable falls back to the default. */
+function alarmDbOf(value, fallback = DEFAULT_ALARM_DB) {
+  const db = Number(value);
+  return Number.isFinite(db) ? clamp(db, -150, 0) : fallback;
 }
 
 /** Normalised 0–1 position of a level inside the display window. */
