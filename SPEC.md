@@ -40,7 +40,11 @@ entirely client-side using the Web Audio API.
 ## Tools (planned)
 
 1. **Spectrum Analyzer** — see [`spec-spectrum-analyzer.md`](./spec-spectrum-analyzer.md) (first tool, in progress)
-2. *(future tools TBD — e.g. decibel meter, oscilloscope)*
+2. **Signal Recognition** — see [`spec-recognition.md`](./spec-recognition.md) (planned):
+   descriptors, user-taught spectrogram templates, coded-signal decoders, and
+   optional pretrained models. Recognition is local-only — no audio, features
+   or embeddings ever leave the device.
+3. *(future tools TBD — e.g. decibel meter, oscilloscope)*
 
 ## Tech Notes
 
