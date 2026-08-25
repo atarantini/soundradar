@@ -1,5 +1,7 @@
 # SoundRadar
 
+*[Leer en español](./README.es.md)*
+
 **[▶ Open the live app](https://atarantini.github.io/soundradar/)** — runs in
 your browser, nothing to install.
 
