@@ -22,9 +22,19 @@ export class DetectMenu {
     this.catalog = catalog;
     this.onChange = onChange;
     this.rows = new Map();
+    const lastGroup = new Map(); // container → the group heading it ended on
     for (const def of catalog) {
+      const container = def.source === 'yamnet' ? modelEl : rulesEl;
+      // Catalog entries that share a `group` sit under one small heading.
+      if (def.group && lastGroup.get(container) !== def.group) {
+        const heading = document.createElement('p');
+        heading.className = 'tag det-group';
+        heading.textContent = def.group;
+        container.append(heading);
+      }
+      lastGroup.set(container, def.group);
       const row = this._row(def, colorOf(def.id));
-      (def.source === 'yamnet' ? modelEl : rulesEl).append(row.el);
+      container.append(row.el);
       this.rows.set(def.id, row);
     }
   }

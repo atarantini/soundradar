@@ -8,6 +8,7 @@
 //   source       'spectrum' — scored from the analyser frame, every frame
 //                'yamnet'   — scored from the YAMNet model's 521 classes
 //   threshold    default score (0–1) that fires an event; the user can move it
+//   group        optional menu heading (entries sharing one are listed together)
 //   minMs, releaseMs, refractoryMs   event timing, see trigger.js
 //   create()     ('spectrum') → { update(frame) → { score, freq?, detail? }, reset() }
 //   score(v)     ('yamnet')   → { score, detail? }

@@ -8,7 +8,7 @@
 //
 // Two inputs, matching a detector's `source`:
 //   'spectrum' — an analyser frame, once per animation frame
-//   'yamnet'   — a 521-class score vector, about twice a second
+//   'yamnet'   — a 521-class score vector, up to four times a second
 
 import { Trigger } from './trigger.js';
 

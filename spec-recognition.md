@@ -33,9 +33,10 @@ Questions 1–3 preserve the project's zero-install promise completely. Question
 > questions 3 and 4 for a first set of everyday sounds — see *Detector
 > modules* below. Shipped: the catalog/engine/trigger/log, the capture tap and
 > resampler, a fixed-settings analyser tap, two Tier 2 pattern rules (siren,
-> mosquito whine) and Tier 3 YAMNet categories (bird, dog, siren, insect,
-> traffic, train, crash, door). Tier 1 user-taught templates remain the next
-> step and slot into the same catalog.
+> mosquito whine) and Tier 3 YAMNet categories, grouped as animals (bird,
+> dog, insect), people (speech, shouting / screaming, crying, laughter), home
+> (door, door lock / keys, crash) and street (siren, traffic, train). Tier 1
+> user-taught templates remain the next step and slot into the same catalog.
 
 ## Detector modules
 
@@ -68,7 +69,7 @@ Two inputs, named by a detector's `source`:
 | Source | Fed by | Rate | Used by |
 |---|---|---|---|
 | `spectrum` | `AnalyserTap` — a second analyser at fixed FFT 4096 / smoothing 0.5, independent of the display | every animation frame | pattern rules |
-| `yamnet` | `CaptureTap` (AudioWorklet) → module Worker → 16 kHz resampler → YAMNet | a 0.975 s window every 0.5 s | AudioSet categories |
+| `yamnet` | `CaptureTap` (AudioWorklet) → module Worker → 16 kHz resampler → YAMNet | a 0.975 s window every 0.25 s | AudioSet categories |
 
 Adding a sound is adding an entry: `yamnetCategory({ id, label, classes })`
 with the AudioSet class names that count as it, or a rule module under
@@ -90,6 +91,20 @@ What the first pass taught:
   needs ~10 s of history to see three beats of a slow hi-lo.
 - **YAMNet is weak on small glass breaks**, which it tends to hear as chimes
   or birdsong. "Crash / smash" is the least reliable category.
+- **People detectors report presence, never content.** Speech, shouting,
+  crying and laughter are AudioSet classes like any other; nothing
+  transcribes or tells voices apart, which keeps the "out of scope" line
+  below intact. With clips on, a voice detection's clip does hold what was
+  said, and the option says so where it is switched on.
+- **There is no AudioSet class for a lock.** A key turning is heard as *Keys
+  jangling* / *Mechanisms*, which make the "Door lock / keys" detector; a
+  heavy bolt thunk is heard as *Door*. Tick, Clicking and Camera also fire
+  on locks but would fire on every clock, keyboard and shutter, so they are
+  left out.
+- **Short sounds need a short hop.** A sound lasting a fraction of a second
+  scores about half as high when it straddles two windows as when one
+  window is centred on it, so the classifier scores a window every 0.25 s
+  (widening only when inference is slow).
 
 ## Principles
 

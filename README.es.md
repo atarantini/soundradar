@@ -70,9 +70,13 @@ desde un subdirectorio funciona.
     marcan en la cascada la frecuencia que escucharon.
   - *El clasificador de sonidos YAMNet* — el modelo de Google de 521 clases
     de AudioSet, que viene incluido con SoundRadar y corre en un worker en
-    segundo plano: **pájaro, perro, sirena, insecto / mosquito, tránsito,
-    tren, choque / rotura, puerta**. Unos 16 MB, que se cargan desde este
-    mismo sitio sólo cuando activás alguno de ellos.
+    segundo plano. Agrupados en el menú: *animales* — **pájaro, perro,
+    insecto / mosquito**; *personas* — **habla, gritos, llanto, risa**;
+    *casa* — **puerta, cerradura / llaves, choque / rotura**; *calle* —
+    **sirena, tránsito, tren**. Unos 16 MB, que se cargan desde este mismo
+    sitio sólo cuando activás alguno de ellos. Los detectores de personas
+    notan *que* alguien habla, grita, llora o se ríe — nada transcribe ni
+    identifica a nadie.
 
   Cada detector tiene un medidor de confianza en vivo con su umbral marcado,
   así el umbral se ajusta mirando, y el registro de detecciones se exporta

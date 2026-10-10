@@ -1,7 +1,7 @@
 // YAMNet, off the main thread.
 //
 // Receives raw audio from the capture tap over a MessagePort, resamples it to
-// 16 kHz, and every half second scores the latest 0.975 s — one YAMNet patch —
+// 16 kHz, and every quarter second scores the latest 0.975 s — one YAMNet patch —
 // against the model's 521 AudioSet classes. Scores go back to the page; audio
 // never leaves this worker.
 //
@@ -16,7 +16,11 @@ import { Resampler } from '../resample.js';
 
 const RATE = 16000;
 const WINDOW = 15600; // 0.975 s, exactly one YAMNet patch → one score frame
-const HOP = 8000; // 0.5 s between windows when the backend keeps up
+// 0.25 s between windows when the backend keeps up. Each instant then falls
+// in about four windows, so a click or a slam lasting a fraction of a second
+// lands near the middle of at least one — at a 0.5 s hop, short sounds read
+// at half the score they get when centred. On a GPU a window costs ~10–30 ms.
+const HOP = 4000;
 const MAX_HOP = RATE * 3;
 const CLASSES = 521;
 // Below this the window is silence; skipping it keeps an idle monitor idle.

@@ -44,6 +44,7 @@ const PALETTE = ['#2a3fd4', '#0f9d58', '#d4762a', '#8e44c4', '#c02b5e', '#0d8ea8
 const DETECT_PALETTE = [
   '#4f8cff', '#2fbf71', '#ff8a3d', '#b46cff', '#ff4f8b',
   '#22c3d6', '#c8d440', '#ff5a4d', '#f2c12e', '#9aa7b8',
+  '#7cdb5a', '#ff7ad9', '#5ad1a8', '#d89a5b', '#8f9bff', '#e8e05a',
 ];
 
 const $ = (id) => document.getElementById(id);

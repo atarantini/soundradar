@@ -772,6 +772,8 @@ input[type="checkbox"] {
   border-top: 1px solid var(--rule);
 }
 .det-row:first-child { border-top: 0; }
+.det-group { margin: 0.7rem 0 0.1rem; }
+.det-group + .det-row { border-top: 0; }
 .det-row .check { font-weight: 600; min-height: 1.9rem; }
 .det-row.is-active .check span { color: var(--det-color, var(--accent)); }
 .det-row.is-off .det-tune { display: none; }

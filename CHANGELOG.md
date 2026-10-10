@@ -45,8 +45,25 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - Adding a sound is one catalog entry: a `yamnetCategory` listing AudioSet
     classes, or a rule module scored from the spectrum.
 
+- **More sounds to detect**, grouped in the Detect menu as Animals, People,
+  Home and Street:
+  - *People:* **Speech** (talking, conversation, whispering, crowd chatter),
+    **Shouting / screaming**, **Crying** (including a baby's) and
+    **Laughter**. They detect *that* someone is talking, shouting, crying or
+    laughing — nothing transcribes or identifies anyone.
+  - *Home:* **Door lock / keys** — a key turning in a lock, a latch or bolt,
+    keys jangling. AudioSet has no lock class; a key turning is heard as keys
+    and mechanism. Switch on Door too to catch a heavy bolt's thunk.
+  - Class lists and thresholds were set against real recordings, so each
+    category fires on its own sounds and stays below threshold on the rest.
+
 ### Changed
 
+- **Dog** now defaults to a 60% threshold (was 30%): YAMNet scores a crying
+  baby at ~55% "Dog", a real bark at ~90%.
+- The classifier scores a window every 0.25 s instead of 0.5 s (still
+  widening on slow machines), so short sounds — a lock, a slam, a scream —
+  land in the middle of a window instead of straddling two.
 - "Disable all alarms" now also clears detector bells, and the Display menu's
   alarm section is called *Alarms*.
 

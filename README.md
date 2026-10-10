@@ -65,9 +65,13 @@ bucket. All paths are relative, so serving it from a subdirectory works.
     wandering wingbeat tone with harmonics). These also mark the frequency
     they heard on the waterfall.
   - *The YAMNet sound classifier* — Google's 521-class AudioSet model, which
-    ships with SoundRadar and runs in a background worker: **bird, dog, siren,
-    insect / mosquito, traffic, train / rail, crash / smash, door**. About
+    ships with SoundRadar and runs in a background worker. Grouped in the
+    menu: *animals* — **bird, dog, insect / mosquito**; *people* — **speech,
+    shouting / screaming, crying, laughter**; *home* — **door, door lock /
+    keys, crash / smash**; *street* — **siren, traffic, train / rail**. About
     16 MB, loaded from this site only when you switch one of these on.
+    The people detectors notice *that* someone is talking, shouting, crying
+    or laughing — nothing transcribes or identifies anyone.
 
   Each detector has a live confidence meter with its threshold marked on it,
   so you set the threshold by watching, and the detection log exports as CSV
