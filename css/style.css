@@ -859,6 +859,18 @@ input[type="checkbox"] {
 /* ---------- Responsive ---------- */
 
 @media (max-width: 900px) {
+  /* The wordmark, six menus and capture stop fitting one row a little below
+     900px, so the menus take a row of their own under the other two. Panels
+     then hang from that row's right edge rather than from their own menu:
+     anchored to a menu near the left, a right-aligned panel would run off the
+     screen. */
+  .bar { flex-wrap: wrap; height: auto; padding: 0.4rem 0.75rem; row-gap: 0.3rem; }
+  .wordmark { margin-right: auto; }
+  .menus { order: 3; width: 100%; margin-left: 0; justify-content: flex-end; position: relative; }
+  .menu { position: static; }
+  .menu-panel { top: 100%; right: 0; }
+  .menu-panel-wide { max-height: calc(100vh - 6.5rem); max-height: calc(100dvh - 6.5rem); }
+
   .sum-device, .sum-input { display: none; }
   /* The two widest, most decorative columns go first: the numbers they
      illustrate are still in the row. */
@@ -869,7 +881,28 @@ input[type="checkbox"] {
 @media (max-width: 620px) {
   .bar { flex-wrap: wrap; height: auto; padding: 0.5rem 0.6rem; }
   /* Wrapped, the menus drop to their own row so capture keeps its corner. */
-  .menus { order: 3; width: 100%; margin-left: 0; overflow-x: auto; }
+  .menus { order: 3; width: 100%; margin-left: 0; overflow-x: auto; justify-content: flex-start; }
+  /* That row scrolls, and a scroll container clips everything positioned
+     inside it: an absolute panel would be cut down to the row's 2rem and
+     every tap on it would land on the plate behind. So on a phone a panel is
+     a fixed sheet across the screen instead. `top: auto` keeps it where it
+     would have opened — right under its summary — and a long one scrolls. */
+  .menu-panel, .menu-panel-wide {
+    position: fixed;
+    top: auto;
+    left: 0.5rem;
+    right: 0.5rem;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 7rem);
+    max-height: calc(100dvh - 7rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* Five actions do not fit beside the title at phone width; wrap them rather
+     than widening the page past the screen. */
+  .report-head { flex-wrap: wrap; row-gap: 0.15rem; }
+  .report-head .link { white-space: nowrap; }
   .wordmark { margin-right: auto; }
   .field-view { padding: 0.4rem; }
   .pad { right: 0.75rem; bottom: 0.8rem; }

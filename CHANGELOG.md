@@ -40,6 +40,21 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - "Disable all alarms" now also clears detector bells, and the Display menu's
   alarm section is called *Alarms*.
 
+### Fixed
+
+- **Toolbar menus on phones.** Below 620px the menus scroll in a row of their
+  own, and that row clipped every drop-down to its own height: menus opened,
+  but nothing in them could be reached, and a tap on one closed it. On a
+  phone a menu now opens as a sheet across the screen under the toolbar, and
+  a long one scrolls inside itself.
+- **Toolbar on tablets.** Between 620px and 900px the toolbar no longer fits
+  one row (adding the Detect menu made that range wider still), which pushed
+  the page past the screen. The menus now take a row of their own there, and
+  their panels open from that row's right edge, so they never run off-screen.
+- **Page wider than a phone screen.** The markers report's actions now wrap
+  instead of widening the page, which had left the whole app slightly zoomed
+  out and pannable sideways on phones.
+
 ## [0.2.0] — 2026-08-22
 
 The survey release: your work now has somewhere to live, somewhere to go, and
