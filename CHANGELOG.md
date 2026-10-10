@@ -62,6 +62,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   detector by category — the instant pattern rules included, marked as such —
   and each category heading is its switch: tick it to turn on everything in
   it, untick to turn it all off, half-ticked when only some are on.
+- **Collapsible categories.** Each category folds away behind the ▾ at the
+  end of its heading. Folding never switches anything; a folded heading
+  still says how many of its sounds are on (or how many it holds) and lights
+  up while one of them is sounding. Which categories are folded is saved
+  with the session.
 
 ### Changed
 

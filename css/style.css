@@ -772,18 +772,24 @@ input[type="checkbox"] {
   border-top: 1px solid var(--rule);
 }
 .det-row:first-child { border-top: 0; }
-/* A category heading is also the category's switch: the whole label is the
-   hit target, so it reads as a heading but taps like a checkbox. */
+/* A category heading: its switch (box + name, one hit target), how many of
+   its sounds are on, and the ▾ that folds it away. */
 .det-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-top: 0.6rem;
-  padding: 0.35rem 0;
-  min-height: 2rem;
+  padding: 0.15rem 0;
   border-bottom: 1px solid var(--rule);
 }
 .det-group:first-child { margin-top: 0.2rem; }
+.det-group .check { flex: 1; min-height: 2rem; }
 .det-group .tag { color: var(--ink-2); font-size: 0.625rem; }
-.det-group-count { margin-left: auto; font-size: 0.6875rem; color: var(--ink-3); }
-.det-group + .det-row { border-top: 0; }
+.det-group-count { font-size: 0.6875rem; color: var(--ink-3); white-space: nowrap; }
+.det-group-toggle { width: 2rem; height: 2rem; font-size: 0.8rem; }
+/* Folded but sounding: the heading carries the signal its rows cannot. */
+.det-group.is-collapsed.is-active .tag,
+.det-group.is-collapsed.is-active .det-group-count { color: var(--accent); }
 .det-kind {
   margin-left: 0.4rem;
   padding: 0 0.3rem;

@@ -75,7 +75,8 @@ bucket. All paths are relative, so serving it from a subdirectory works.
 
   The Detect menu lists everything by category — Animals, People, Home,
   Street, with the pattern rules inside their category — and each category's
-  heading switches the whole category on or off.
+  heading switches the whole category on or off; its ▾ folds the category
+  away, and a folded heading lights up while one of its sounds is heard.
 
   Each detector has a live confidence meter with its threshold marked on it,
   so you set the threshold by watching, and the detection log exports as CSV

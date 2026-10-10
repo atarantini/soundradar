@@ -80,7 +80,8 @@ desde un subdirectorio funciona.
 
   El menú Detect lista todo por categoría — Animales, Personas, Casa, Calle,
   con las reglas de patrón dentro de su categoría — y el encabezado de cada
-  categoría la activa o desactiva entera.
+  categoría la activa o desactiva entera; su ▾ la pliega, y un encabezado
+  plegado se ilumina mientras se oye uno de sus sonidos.
 
   Cada detector tiene un medidor de confianza en vivo con su umbral marcado,
   así el umbral se ajusta mirando, y el registro de detecciones se exporta

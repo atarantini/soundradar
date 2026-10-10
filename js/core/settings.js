@@ -32,6 +32,9 @@ export const BASE_DEFAULTS = {
   // Keep a short audio clip of each detection, in memory only. Off by default:
   // it is the one feature that holds on to sound.
   detectClips: false,
+  // Detect menu categories folded away (names from GROUPS). View state, but
+  // per session like the rest of the menu, so it survives a reload.
+  detectCollapsed: [],
 };
 
 export const WATERFALL_SPANS = [5, 10, 20, 30, 60, 120];
@@ -92,6 +95,9 @@ export function normalize(s, nyquist = 24000) {
   s.alarmMuted = Boolean(s.alarmMuted);
   s.detectors = normalizeDetectors(s.detectors);
   s.detectClips = Boolean(s.detectClips);
+  s.detectCollapsed = Array.isArray(s.detectCollapsed)
+    ? [...new Set(s.detectCollapsed.filter((g) => typeof g === 'string' && g.length <= 40))].slice(0, 16)
+    : [];
   return s;
 }
 

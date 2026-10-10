@@ -164,6 +164,7 @@ const detectMenu = new DetectMenu({
   colorOf: colorOfDetector,
   onChange: setDetector,
   onChangeMany: setDetectors,
+  onCollapse: (names) => settings.set({ detectCollapsed: names }, []),
 });
 
 const detectionsTable = new DetectionsTable({
@@ -604,6 +605,7 @@ function syncDetection() {
   else if (detection.slots.size) clips.enable(engine);
   else clips.detach();
   detectMenu.sync(settings.v.detectors);
+  detectMenu.setCollapsed(settings.v.detectCollapsed);
   syncDetectionsPanel();
 }
 

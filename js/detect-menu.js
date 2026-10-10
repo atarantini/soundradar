@@ -6,6 +6,10 @@
 // category. Its state is read off the detectors, so there is nothing extra to
 // save and it can never disagree with them.
 //
+// A category also folds away behind its ▾ button. Folding is only about what
+// is on screen: it never switches anything, a folded heading still says how
+// many of its sounds are on, and it lights up while one of them is sounding.
+//
 // Rows are built once — the catalog does not change at runtime — and mutated
 // in place after that, so dragging a threshold slider is never interrupted by
 // a rebuild triggered by the very setting it is changing.
@@ -20,15 +24,17 @@ export class DetectMenu {
    * @param {(id:string)=>string} o.colorOf
    * @param {(id:string, patch:object)=>void} o.onChange
    * @param {(ids:string[], patch:object)=>void} o.onChangeMany  one write for a category
+   * @param {(collapsed:string[])=>void} [o.onCollapse] the user folded or unfolded one
    */
-  constructor({ listEl, badgeEl, stateEl, catalog, colorOf, onChange, onChangeMany }) {
+  constructor({ listEl, badgeEl, stateEl, catalog, colorOf, onChange, onChangeMany, onCollapse }) {
     this.badgeEl = badgeEl;
     this.stateEl = stateEl;
     this.catalog = catalog;
     this.onChange = onChange;
     this.onChangeMany = onChangeMany;
+    this.onCollapse = onCollapse;
     this.rows = new Map();
-    this.groups = new Map(); // name → { box, count, ids }
+    this.groups = new Map(); // name → { head, box, count, toggle, body, ids, on, collapsed }
     let group = null;
     for (const def of catalog) {
       const name = def.group || 'Other';
@@ -36,30 +42,83 @@ export class DetectMenu {
         group = name;
         this.groups.set(name, this._heading(name, listEl));
       }
-      this.groups.get(name).ids.push(def.id);
+      const g = this.groups.get(name);
+      g.ids.push(def.id);
       const row = this._row(def, colorOf(def.id));
-      listEl.append(row.el);
+      g.body.append(row.el);
       this.rows.set(def.id, row);
     }
   }
 
   _heading(name, listEl) {
+    const head = document.createElement('div');
+    head.className = 'det-group';
+
+    // The switch: the box and the category's name.
     const label = document.createElement('label');
-    label.className = 'check det-group';
+    label.className = 'check';
     const box = document.createElement('input');
     box.type = 'checkbox';
     box.setAttribute('aria-label', `All ${name.toLowerCase()} detectors`);
     const title = document.createElement('span');
     title.className = 'tag';
     title.textContent = name;
+    label.append(box, title);
+
     const count = document.createElement('span');
     count.className = 'det-group-count';
-    label.append(box, title, count);
-    listEl.append(label);
-    const group = { box, count, ids: [] };
+
+    // The fold: a separate button, so folding never toggles the switch.
+    const body = document.createElement('div');
+    body.className = 'det-group-body';
+    body.id = `det-cat-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'icon-cell det-group-toggle';
+    toggle.setAttribute('aria-controls', body.id);
+
+    head.append(label, count, toggle);
+    listEl.append(head, body);
+    const group = { name, head, box, count, toggle, body, ids: [], on: 0, collapsed: false };
     // An indeterminate box comes back checked from a click: some on → all on.
     box.addEventListener('change', () => this.onChangeMany(group.ids, { on: box.checked }));
+    toggle.addEventListener('click', () => {
+      this._fold(group, !group.collapsed);
+      this.onCollapse?.(this.collapsed());
+    });
+    this._fold(group, false);
     return group;
+  }
+
+  _fold(group, collapsed) {
+    group.collapsed = collapsed;
+    group.body.hidden = collapsed;
+    group.head.classList.toggle('is-collapsed', collapsed);
+    group.toggle.textContent = collapsed ? '▸' : '▾';
+    group.toggle.setAttribute('aria-expanded', String(!collapsed));
+    const label = `${collapsed ? 'Show' : 'Hide'} the ${group.name.toLowerCase()} detectors`;
+    group.toggle.title = label;
+    group.toggle.setAttribute('aria-label', label);
+    this._count(group);
+  }
+
+  _count(group) {
+    const m = group.ids.length;
+    group.count.textContent = group.on
+      ? `${group.on} of ${m} on`
+      : group.collapsed ? `${m} sound${m === 1 ? '' : 's'}` : '';
+  }
+
+  /** Names of the folded categories, for saving. */
+  collapsed() {
+    return [...this.groups.values()].filter((g) => g.collapsed).map((g) => g.name);
+  }
+
+  /** Fold exactly these categories — a session's saved state. */
+  setCollapsed(names = []) {
+    for (const g of this.groups.values()) {
+      if (g.collapsed !== names.includes(g.name)) this._fold(g, !g.collapsed);
+    }
   }
 
   _row(def, color) {
@@ -143,10 +202,10 @@ export class DetectMenu {
       if (c.on) on++;
     }
     for (const g of this.groups.values()) {
-      const n = g.ids.filter((id) => config[id]?.on).length;
-      g.box.checked = n === g.ids.length;
-      g.box.indeterminate = n > 0 && n < g.ids.length;
-      g.count.textContent = n ? `${n} of ${g.ids.length} on` : '';
+      g.on = g.ids.filter((id) => config[id]?.on).length;
+      g.box.checked = g.on === g.ids.length;
+      g.box.indeterminate = g.on > 0 && g.on < g.ids.length;
+      this._count(g);
     }
     this.badgeEl.textContent = String(on);
     this.badgeEl.hidden = on === 0;
@@ -165,6 +224,10 @@ export class DetectMenu {
         row.shown = pct;
       }
       row.el.classList.toggle('is-active', engine.active.has(id));
+    }
+    // A folded category still shows that something in it is sounding.
+    for (const g of this.groups.values()) {
+      g.head.classList.toggle('is-active', g.ids.some((id) => engine.active.has(id)));
     }
   }
 
