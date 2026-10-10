@@ -264,7 +264,7 @@
     <span class="report-count" id="detectionCount">0</span>
     <span class="report-spacer"></span>
     <button class="link" id="exportDetections" type="button">Export CSV</button>
-    <button class="link link-danger" id="clearDetections" type="button">Clear</button>
+    <button class="link link-danger" id="clearDetections" type="button" title="Remove every detection in the log">Clear</button>
     <button class="link report-toggle" id="detectionsToggle" type="button" aria-expanded="true">Hide</button>
   </header>
   <div class="report-body" id="detectionsBody">
@@ -277,6 +277,7 @@
           <th scope="col" class="num-col col-dur">Duration</th>
           <th scope="col" class="num-col col-hz">Frequency</th>
           <th scope="col" class="col-source">Detector</th>
+          <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
         </tr>
       </thead>
       <tbody id="detectionRows"></tbody>

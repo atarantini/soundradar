@@ -29,6 +29,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - A **Detections** log under the markers report: time, sound and the
     AudioSet class or siren style that matched, peak confidence, duration,
     frequency. Exports as CSV. Kept in memory per session; not saved.
+    Remove a single detection — a false alarm, a test — with its ✕, or every
+    one with *Clear* (which asks first). Either takes the label off the
+    waterfall too.
   - Which detectors are on, their thresholds and bells are part of a
     session's settings — they switch with the session and travel in the JSON
     export.
@@ -51,6 +54,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   one row (adding the Detect menu made that range wider still), which pushed
   the page past the screen. The menus now take a row of their own there, and
   their panels open from that row's right edge, so they never run off-screen.
+- **Space on a focused button.** The start/pause shortcut swallowed Space
+  everywhere but text fields, so a focused button (a row's ✕, a bell, a
+  toolbar menu) could not be pressed with it. Space now presses what has
+  focus, and still starts or pauses capture from the page itself.
 - **Page wider than a phone screen.** The markers report's actions now wrap
   instead of widening the page, which had left the whole app slightly zoomed
   out and pannable sideways on phones.

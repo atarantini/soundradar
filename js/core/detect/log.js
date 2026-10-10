@@ -57,6 +57,19 @@ export class DetectionLog {
     this._changed('close', entry);
   }
 
+  /**
+   * Drop one record — a false alarm, a test bark. An event still in progress
+   * stays dropped: the engine finishes it quietly instead of logging it again.
+   * @returns {boolean} whether there was such a record
+   */
+  remove(id) {
+    const i = this.entries.findIndex((e) => e.id === id);
+    if (i < 0) return false;
+    const [entry] = this.entries.splice(i, 1);
+    this._changed('remove', entry);
+    return true;
+  }
+
   clear() {
     if (!this.entries.length) return;
     this.entries = [];

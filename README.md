@@ -72,7 +72,7 @@ bucket. All paths are relative, so serving it from a subdirectory works.
   Each detector has a live confidence meter with its threshold marked on it,
   so you set the threshold by watching, and the detection log exports as CSV
   — leave a tablet in a room overnight and come back to a list of when the
-  thing happened. Adding a new sound is one catalog entry (see `CLAUDE.md`).
+  thing happened. Remove a false alarm with its ✕, or clear the whole log. Adding a new sound is one catalog entry (see `CLAUDE.md`).
   Crashes are the weakest category: YAMNet tends to hear a small glass break
   as chimes or birdsong.
 - **Sessions** — named save states, each with its own display settings and

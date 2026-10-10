@@ -168,6 +168,7 @@ const detectionsTable = new DetectionsTable({
   countEl: $('detectionCount'),
   log: detectLog,
   colorOf: colorOfDetector,
+  onRemove: (id) => detectLog.remove(id),
 });
 
 // ---------- layout ----------
@@ -611,10 +612,20 @@ classifier.onscores = (scores, t) => {
 };
 classifier.onstate = () => detectMenu.setModel(classifier, engine.running && !engine.paused);
 
-$('clearDetections').addEventListener('click', () => {
-  detectLog.clear();
+// Removing records changes what the waterfall labels, and an empty log with
+// nothing switched on no longer needs its panel.
+detectLog.subscribe((kind) => {
+  if (kind !== 'remove' && kind !== 'clear') return;
   syncDetectionsPanel();
   needsIdleDraw = true;
+});
+
+// Same guard as the markers report: an overnight log is worth one question.
+$('clearDetections').addEventListener('click', () => {
+  const n = detectLog.entries.length;
+  if (n && confirm(`Remove all ${n} detection${n === 1 ? '' : 's'}? Export them as CSV first to keep a copy.`)) {
+    detectLog.clear();
+  }
 });
 $('exportDetections').addEventListener('click', () => {
   if (!detectLog.entries.length) return;
@@ -1124,6 +1135,9 @@ window.addEventListener('keydown', (e) => {
   if (TYPING.has(document.activeElement?.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
   switch (e.key) {
     case ' ':
+      // Space presses whatever button or menu has focus — a row's ✕, a bell,
+      // a toolbar button. Only on the page itself does it mean start/pause.
+      if (document.activeElement?.closest('button, summary, a[href]')) return;
       e.preventDefault();
       if (!engine.running) startCapture();
       else if (engine.paused) engine.resume();

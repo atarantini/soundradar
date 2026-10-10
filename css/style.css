@@ -925,7 +925,7 @@ input[type="checkbox"] {
   .col-alarm { width: auto; }
   .cell-trigger { width: 4.3rem; }
   /* A detection reads as when, what, how sure; the rest is in the CSV. */
-  .report-detections .report-table tr { grid-template-columns: 4.6rem 1fr 6rem; }
+  .report-detections .report-table tr { grid-template-columns: 4.6rem 1fr 6rem auto; }
   .report-detections .col-dur, .report-detections .col-hz { display: none; }
   .col-when, .col-conf { width: auto; }
 }

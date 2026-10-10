@@ -77,7 +77,8 @@ desde un subdirectorio funciona.
   Cada detector tiene un medidor de confianza en vivo con su umbral marcado,
   así el umbral se ajusta mirando, y el registro de detecciones se exporta
   como CSV — dejá una tablet en una habitación toda la noche y volvé a una
-  lista de cuándo pasó. Agregar un sonido nuevo es una entrada en el catálogo
+  lista de cuándo pasó. Una falsa alarma se borra con su ✕, o se vacía el
+  registro entero. Agregar un sonido nuevo es una entrada en el catálogo
   (ver `CLAUDE.md`). Los choques son la categoría más débil: YAMNet tiende a
   oír la rotura de un vidrio chico como campanitas o pájaros.
 - **Sesiones** — estados guardados con nombre, cada uno con su propia

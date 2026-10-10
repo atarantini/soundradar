@@ -19,17 +19,20 @@ export class DetectionsTable {
    * @param {HTMLElement} o.countEl
    * @param {import('./core/detect/log.js').DetectionLog} o.log
    * @param {(id:string)=>string} o.colorOf
+   * @param {(entryId:number)=>void} o.onRemove  the user asked to drop a row
    */
-  constructor({ bodyEl, emptyEl, countEl, log, colorOf }) {
+  constructor({ bodyEl, emptyEl, countEl, log, colorOf, onRemove }) {
     this.bodyEl = bodyEl;
     this.emptyEl = emptyEl;
     this.countEl = countEl;
     this.log = log;
     this.colorOf = colorOf;
+    this.onRemove = onRemove;
     this.rows = new Map(); // entry id → row refs
     log.subscribe((kind, entry) => {
       if (kind === 'add') this._add(entry);
       else if (kind === 'close') this._refresh(this.rows.get(entry.id), performance.now());
+      else if (kind === 'remove') this._remove(entry);
       else this.rebuild();
     });
     this.rebuild();
@@ -93,7 +96,18 @@ export class DetectionsTable {
     const source = cell('col-source');
     source.textContent = SOURCE_LABELS[entry.source] || entry.source;
 
-    tr.append(when, sound, conf, dur, hz, source);
+    const actions = cell('row-actions col-actions');
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'icon-cell danger';
+    remove.textContent = '✕';
+    const what = `${entry.label} at ${clock.textContent}`;
+    remove.title = `Remove this detection (${what})`;
+    remove.setAttribute('aria-label', remove.title);
+    remove.addEventListener('click', () => this.onRemove?.(entry.id));
+    actions.append(remove);
+
+    tr.append(when, sound, conf, dur, hz, source, actions);
     this.bodyEl.prepend(tr);
     const row = { entry, tr, ago, detail, fill, confText, dur, hz, last: {} };
     this.rows.set(entry.id, row);
@@ -105,6 +119,23 @@ export class DetectionsTable {
       oldest.remove();
     }
     this._refresh(row, performance.now());
+    this._counts();
+  }
+
+  _remove(entry) {
+    const row = this.rows.get(entry.id);
+    // Past the row cap, a removal frees room for an older record that is not
+    // on screen yet; a rebuild is the simplest way to bring it in.
+    if (!row || this.log.entries.length >= MAX_ROWS) {
+      this.rebuild();
+      return;
+    }
+    // Keep keyboard focus in the list, so rows can be removed one after another.
+    const hadFocus = row.tr.contains(document.activeElement);
+    const neighbour = row.tr.nextElementSibling || row.tr.previousElementSibling;
+    row.tr.remove();
+    this.rows.delete(entry.id);
+    if (hadFocus) neighbour?.querySelector('.col-actions button')?.focus();
     this._counts();
   }
 
