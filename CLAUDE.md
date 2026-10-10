@@ -175,6 +175,7 @@ Canvas colours are read out of CSS custom properties via `cssVar()` so a colour 
 - New settings go in `BASE_DEFAULTS` in `js/core/settings.js` and are applied through `settings.set(patch, tags)`, so persistence and "Reset all settings" stay authoritative.
 - Keep frequency/dB coordinate conversions in `js/core/scale.js` — don't duplicate log-scale or dB-mapping math in drawing code.
 - Keep `js/core/*` free of DOM lookups and app-specific IDs; pass in a rect and a theme instead.
+- The plates keep a guaranteed share of the screen (`--plates-min` in `css/style.css`); the reports below share the rest and scroll their rows. Anything new that stacks under the plates must shrink and scroll the same way rather than push them smaller.
 - The UI is sized for tablet/touch (large hit targets, generous base font — see `css/style.css` `:root`), not a dense desktop panel; collapsible `<details>` toolbar menus keep secondary controls out of the way so the plates get primary screen space.
 - Every interaction must work by touch as well as by mouse — that is why the zoom/pan pad exists alongside the wheel and arrow keys.
 - Anything that must survive a reload belongs to a session, not to a new

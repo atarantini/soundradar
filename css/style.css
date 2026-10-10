@@ -30,6 +30,10 @@
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
 
   --bar-h: 3rem;
+  /* The plates' guaranteed share of the screen. The reports below take what
+     is left and scroll inside it, so a long marker list or detection log can
+     never squeeze the waterfall away. */
+  --plates-min: 55vh;
 
   /* Plate colours do not follow the paper: the plots stay dark in both themes,
      so a spectrogram always has the dark ground its colour maps need. */
@@ -327,8 +331,8 @@ button, input, select, output, table { font: inherit; color: inherit; }
 
 .field-view {
   position: relative;
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: var(--plates-min);
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -472,11 +476,13 @@ button, input, select, output, table { font: inherit; color: inherit; }
 
 /* ---------- Report table ---------- */
 
+/* Reports shrink before the plates do (down to their header, which keeps
+   Hide / Export / Clear in reach) and scroll their rows instead of growing. */
 .report {
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-height: 2.25rem; /* the header; a flex item's default minimum is all its rows */
   display: flex;
   flex-direction: column;
-  max-height: 40vh;
   background: var(--paper-2);
   border-top: 1px solid var(--rule);
 }
@@ -511,7 +517,11 @@ button, input, select, output, table { font: inherit; color: inherit; }
 }
 .report-spacer { flex: 1; }
 
-.report-body { overflow: auto; }
+.report-head { flex-shrink: 0; }
+/* The cap sits on the rows, not the report: two full reports then have the
+   same natural height and give up equal room when the screen runs short,
+   instead of the longer list squeezing the other one down to a row or two. */
+.report-body { overflow: auto; flex: 1 1 auto; min-height: 0; max-height: 38vh; }
 
 .report-table {
   width: 100%;
@@ -860,7 +870,6 @@ input[type="checkbox"] {
 
 /* ---------- Detections report ---------- */
 
-.report-detections { max-height: 30vh; }
 .report[hidden] { display: none; }
 .col-when { width: 7.5rem; white-space: nowrap; }
 .col-sound { min-width: 8rem; }
@@ -921,6 +930,7 @@ input[type="checkbox"] {
 }
 
 @media (max-width: 620px) {
+  :root { --plates-min: 50vh; }
   .bar { flex-wrap: wrap; height: auto; padding: 0.5rem 0.6rem; }
   /* Wrapped, the menus drop to their own row so capture keeps its corner. */
   .menus { order: 3; width: 100%; margin-left: 0; overflow-x: auto; justify-content: flex-start; }
@@ -948,7 +958,7 @@ input[type="checkbox"] {
   .wordmark { margin-right: auto; }
   .field-view { padding: 0.4rem; }
   .pad { right: 0.75rem; bottom: 0.8rem; }
-  .report { max-height: 46vh; }
+  .report-body { max-height: 42vh; }
   .report-table thead { display: none; }
   .report-table, .report-table tbody, .report-table tr, .report-table td { display: block; width: 100%; }
   .report-table tr {
@@ -974,6 +984,12 @@ input[type="checkbox"] {
   .report-detections .det-sound { flex-wrap: wrap; row-gap: 0; }
   .report-detections .col-actions { width: auto; }
   .col-when, .col-conf { width: auto; }
+}
+
+/* A short screen — a phone held sideways — has little height to share: the
+   plates settle for less so the reports' headers still fit below them. */
+@media (max-height: 500px) {
+  :root { --plates-min: 40vh; }
 }
 
 @media (prefers-color-scheme: dark) {

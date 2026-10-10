@@ -83,6 +83,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Long marker lists and detection logs no longer squeeze the plots.** The
+  two reports grew with their rows until they took most of the screen — with
+  40 markers and 80 detections the waterfall shrank by 83% on a desktop and
+  vanished on a phone, and the bottom of the page was cut off. The plates now
+  keep at least 55% of the screen (50% on phones, 40% on short screens such
+  as a phone held sideways); the reports share what is left, scroll their
+  rows, and always keep their header, with Hide, Export and Clear, in view.
+  Two full reports split the room evenly, and one alone takes all of it.
 - **Detection after Clear.** Clearing the log while a sound was still going
   on — traffic, talking, a long siren — left that sound's event running out
   of sight, and nothing new was logged until the sound stopped for a moment.
