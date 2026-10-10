@@ -137,19 +137,16 @@
     <details class="menu" id="menuDetect">
       <summary>Detect <b class="menu-badge" id="detectBadge" hidden></b></summary>
       <div class="menu-panel menu-panel-wide">
-        <p class="tag">Pattern rules &middot; instant</p>
-        <div class="det-list" id="detectRules"></div>
-        <hr class="menu-rule">
-        <p class="tag">Sound classifier</p>
         <div class="model-card" id="modelCard">
           <div class="model-card-head">
             <span class="model-card-name">YAMNet</span>
             <span class="model-card-meta" id="modelMeta">16 MB &middot; Apache-2.0 &middot; 521 sounds</span>
           </div>
           <p class="model-state" id="modelState">Not loaded</p>
-          <p class="hint">Google's general-purpose sound classifier. It ships with SoundRadar and loads from this site the first time you switch on one of the sounds below. Audio is analysed in this tab; nothing is uploaded.</p>
+          <p class="hint">Google's general-purpose sound classifier. It ships with SoundRadar and loads from this site the first time you switch on a sound below; those marked <em>instant</em> are pattern rules and do not need it. Audio is analysed in this tab; nothing is uploaded.</p>
         </div>
-        <div class="det-list" id="detectModel"></div>
+        <p class="hint">Tick a category to switch on everything in it, or pick sounds one by one.</p>
+        <div class="det-list" id="detectList"></div>
         <hr class="menu-rule">
         <label class="check"><input type="checkbox" id="detectClips"><span>Keep a sound clip of each detection</span></label>
         <p class="hint">A few seconds around each detection stay in this tab's memory, to replay (&#9654;) or download (&#10515;) from the log. Nothing is stored or uploaded: clips are gone when you reload, remove the detection, clear the log, switch sessions or turn this off. Clips of voice detections hold what was said. Replaying over speakers is not logged as a new detection.</p>

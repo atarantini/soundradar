@@ -26,6 +26,7 @@ const FLOOR_DB = -100;
 export default {
   id: 'mosquito-whine',
   label: 'Mosquito whine',
+  group: 'Animals',
   source: 'spectrum',
   description: 'A wandering wingbeat tone between 300 Hz and 1 kHz with a strong 2nd harmonic.',
   threshold: 0.6,

@@ -19,7 +19,7 @@ const INDEX = new Map(YAMNET_CLASSES.map((name, i) => [name, i]));
  * @param {string} o.label
  * @param {string[]} o.classes AudioSet class names, as in yamnet-classes.js
  * @param {number} [o.threshold] default score that fires an event
- * @param {string} [o.group]     menu heading it is listed under
+ * @param {string} [o.group]     category in GROUPS (catalog.js)
  */
 export function yamnetCategory({
   id, label, description = '', group = '', classes, threshold = 0.3,
@@ -64,6 +64,16 @@ export const YAMNET_CATEGORIES = [
     ],
   }),
   yamnetCategory({
+    id: 'cat',
+    label: 'Cat',
+    group: 'Animals',
+    description: 'Meowing, purring, caterwauling, growling. A hiss is often missed.',
+    // "Roaring cats" is YAMNet's lions and tigers, but it is also where a
+    // house cat's growl lands.
+    classes: ['Cat', 'Meow', 'Purr', 'Hiss', 'Caterwaul', 'Roaring cats (lions, tigers)'],
+    threshold: 0.4,
+  }),
+  yamnetCategory({
     id: 'dog',
     label: 'Dog',
     group: 'Animals',
@@ -102,7 +112,8 @@ export const YAMNET_CATEGORIES = [
     group: 'People',
     description: 'Shouts, yells and screams — and groans, which carry most short screams.',
     classes: ['Shout', 'Bellow', 'Whoop', 'Yell', 'Children shouting', 'Screaming', 'Groan'],
-    threshold: 0.25,
+    // Screams score 70–80%; a cat's yowl reaches ~30% "Screaming".
+    threshold: 0.35,
     releaseMs: 500,
   }),
   yamnetCategory({
@@ -111,7 +122,9 @@ export const YAMNET_CATEGORIES = [
     group: 'People',
     description: 'A baby crying, sobbing, whimpering, wailing.',
     classes: ['Crying, sobbing', 'Baby cry, infant cry', 'Whimper', 'Wail, moan'],
-    threshold: 0.4,
+    // A crying baby scores ~98%; parts of a cat's meow reach ~60% "Crying,
+    // sobbing" with the cat classes near zero, so the bar sits between them.
+    threshold: 0.7,
     releaseMs: 2000,
   }),
   yamnetCategory({

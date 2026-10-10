@@ -34,7 +34,7 @@ Questions 1–3 preserve the project's zero-install promise completely. Question
 > modules* below. Shipped: the catalog/engine/trigger/log, the capture tap and
 > resampler, a fixed-settings analyser tap, two Tier 2 pattern rules (siren,
 > mosquito whine) and Tier 3 YAMNet categories, grouped as animals (bird,
-> dog, insect), people (speech, shouting / screaming, crying, laughter), home
+> cat, dog, insect, plus the mosquito rule), people (speech, shouting / screaming, crying, laughter), home
 > (door, door lock / keys, crash) and street (siren, traffic, train). Tier 1
 > user-taught templates remain the next step and slot into the same catalog.
 
@@ -101,6 +101,11 @@ What the first pass taught:
   heavy bolt thunk is heard as *Door*. Tick, Clicking and Camera also fire
   on locks but would fire on every clock, keyboard and shutter, so they are
   left out.
+- **Categories are the user's unit, sources are not.** The menu lists
+  detectors by category (animals, people, home, street), rules and
+  classifier categories side by side, and a category can be switched as a
+  whole. Whether a detector needs the model is a tag on its row, not a
+  section of the menu.
 - **Short sounds need a short hop.** A sound lasting a fraction of a second
   scores about half as high when it straddles two windows as when one
   window is centred on it, so the classifier scores a window every 0.25 s

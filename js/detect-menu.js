@@ -1,5 +1,10 @@
-// The Detect menu: one row per detector in the catalog, plus the classifier's
-// model card.
+// The Detect menu: the detectors of the catalog, listed by category, plus the
+// classifier's model card.
+//
+// Each category heading is also its on/off switch: ticked when every detector
+// in it is on, half-ticked when some are, and a click switches the whole
+// category. Its state is read off the detectors, so there is nothing extra to
+// save and it can never disagree with them.
 //
 // Rows are built once — the catalog does not change at runtime — and mutated
 // in place after that, so dragging a threshold slider is never interrupted by
@@ -8,35 +13,53 @@
 export class DetectMenu {
   /**
    * @param {object} o
-   * @param {HTMLElement} o.rulesEl  container for 'spectrum' detectors
-   * @param {HTMLElement} o.modelEl  container for 'yamnet' detectors
+   * @param {HTMLElement} o.listEl   container for the categories and their rows
    * @param {HTMLElement} o.badgeEl  count of detectors switched on
    * @param {HTMLElement} o.stateEl  the model card's status line
-   * @param {object[]} o.catalog
+   * @param {object[]} o.catalog     already in category order
    * @param {(id:string)=>string} o.colorOf
    * @param {(id:string, patch:object)=>void} o.onChange
+   * @param {(ids:string[], patch:object)=>void} o.onChangeMany  one write for a category
    */
-  constructor({ rulesEl, modelEl, badgeEl, stateEl, catalog, colorOf, onChange }) {
+  constructor({ listEl, badgeEl, stateEl, catalog, colorOf, onChange, onChangeMany }) {
     this.badgeEl = badgeEl;
     this.stateEl = stateEl;
     this.catalog = catalog;
     this.onChange = onChange;
+    this.onChangeMany = onChangeMany;
     this.rows = new Map();
-    const lastGroup = new Map(); // container → the group heading it ended on
+    this.groups = new Map(); // name → { box, count, ids }
+    let group = null;
     for (const def of catalog) {
-      const container = def.source === 'yamnet' ? modelEl : rulesEl;
-      // Catalog entries that share a `group` sit under one small heading.
-      if (def.group && lastGroup.get(container) !== def.group) {
-        const heading = document.createElement('p');
-        heading.className = 'tag det-group';
-        heading.textContent = def.group;
-        container.append(heading);
+      const name = def.group || 'Other';
+      if (name !== group) {
+        group = name;
+        this.groups.set(name, this._heading(name, listEl));
       }
-      lastGroup.set(container, def.group);
+      this.groups.get(name).ids.push(def.id);
       const row = this._row(def, colorOf(def.id));
-      container.append(row.el);
+      listEl.append(row.el);
       this.rows.set(def.id, row);
     }
+  }
+
+  _heading(name, listEl) {
+    const label = document.createElement('label');
+    label.className = 'check det-group';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.setAttribute('aria-label', `All ${name.toLowerCase()} detectors`);
+    const title = document.createElement('span');
+    title.className = 'tag';
+    title.textContent = name;
+    const count = document.createElement('span');
+    count.className = 'det-group-count';
+    label.append(box, title, count);
+    listEl.append(label);
+    const group = { box, count, ids: [] };
+    // An indeterminate box comes back checked from a click: some on → all on.
+    box.addEventListener('change', () => this.onChangeMany(group.ids, { on: box.checked }));
+    return group;
   }
 
   _row(def, color) {
@@ -53,6 +76,14 @@ export class DetectMenu {
     const name = document.createElement('span');
     name.textContent = def.label;
     label.append(box, swatch, name);
+    if (def.source === 'spectrum') {
+      // Pattern rules read the spectrum directly: no model to load.
+      const kind = document.createElement('span');
+      kind.className = 'det-kind';
+      kind.textContent = 'instant';
+      kind.title = 'A pattern rule: works at once, without the sound classifier';
+      label.append(kind);
+    }
     box.addEventListener('change', () => this.onChange(def.id, { on: box.checked }));
 
     const desc = document.createElement('p');
@@ -110,6 +141,12 @@ export class DetectMenu {
       row.bell.classList.toggle('on', Boolean(c.alarm));
       row.bell.setAttribute('aria-pressed', String(Boolean(c.alarm)));
       if (c.on) on++;
+    }
+    for (const g of this.groups.values()) {
+      const n = g.ids.filter((id) => config[id]?.on).length;
+      g.box.checked = n === g.ids.length;
+      g.box.indeterminate = n > 0 && n < g.ids.length;
+      g.count.textContent = n ? `${n} of ${g.ids.length} on` : '';
     }
     this.badgeEl.textContent = String(on);
     this.badgeEl.hidden = on === 0;

@@ -54,13 +54,22 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - *Home:* **Door lock / keys** — a key turning in a lock, a latch or bolt,
     keys jangling. AudioSet has no lock class; a key turning is heard as keys
     and mechanism. Switch on Door too to catch a heavy bolt's thunk.
+  - *Animals:* **Cat** — meowing, purring, caterwauling, a growl. (A hiss is
+    often heard as a power tool and missed.)
   - Class lists and thresholds were set against real recordings, so each
     category fires on its own sounds and stays below threshold on the rest.
+- **Categories you can switch as a whole.** The Detect menu now lists every
+  detector by category — the instant pattern rules included, marked as such —
+  and each category heading is its switch: tick it to turn on everything in
+  it, untick to turn it all off, half-ticked when only some are on.
 
 ### Changed
 
 - **Dog** now defaults to a 60% threshold (was 30%): YAMNet scores a crying
   baby at ~55% "Dog", a real bark at ~90%.
+- **Crying** now defaults to 70% and **Shouting / screaming** to 35%: parts
+  of a cat's meow read ~60% "crying" and its yowl ~30% "screaming", while
+  real crying and screams score 70–99%.
 - The classifier scores a window every 0.25 s instead of 0.5 s (still
   widening on slow machines), so short sounds — a lock, a slam, a scream —
   land in the middle of a window instead of straddling two.

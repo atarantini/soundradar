@@ -24,6 +24,7 @@ const SCORE_EVERY_MS = 100;
 export default {
   id: 'siren-sweep',
   label: 'Siren (pattern)',
+  group: 'Street',
   source: 'spectrum',
   description: 'Wail, yelp or two-tone: a loud tone between 350 Hz and 1.9 kHz that keeps sweeping or alternating.',
   threshold: 0.6,

@@ -157,13 +157,13 @@ const table = new MarkersTable({
 });
 
 const detectMenu = new DetectMenu({
-  rulesEl: $('detectRules'),
-  modelEl: $('detectModel'),
+  listEl: $('detectList'),
   badgeEl: $('detectBadge'),
   stateEl: $('modelState'),
   catalog: DETECTORS,
   colorOf: colorOfDetector,
   onChange: setDetector,
+  onChangeMany: setDetectors,
 });
 
 const detectionsTable = new DetectionsTable({
@@ -567,8 +567,14 @@ $('reportToggle').addEventListener('click', () => {
 // ---------- detection ----------
 
 function setDetector(id, patch) {
-  const current = settings.v.detectors[id] || {};
-  settings.set({ detectors: { ...settings.v.detectors, [id]: { ...current, ...patch } } }, ['detect']);
+  setDetectors([id], patch);
+}
+
+/** The same change to several detectors (a whole category) in one write. */
+function setDetectors(ids, patch) {
+  const next = { ...settings.v.detectors };
+  for (const id of ids) next[id] = { ...next[id], ...patch };
+  settings.set({ detectors: next }, ['detect']);
 }
 
 function armedDetectorCount() {
