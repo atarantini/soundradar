@@ -56,6 +56,25 @@ bucket. All paths are relative, so serving it from a subdirectory works.
   Mute silences every alarm without disarming anything; "Disable all alarms"
   switches them all off. (Headphones — over speakers the beep feeds back into
   the microphone.)
+- **Sound detection** — switch on the sounds you care about in the Detect
+  menu and every time one is heard it is logged, labelled on the waterfall at
+  the moment it happened, and (optionally) announced with a chime. Two kinds
+  of detector, side by side:
+  - *Pattern rules*, instant and tiny: **siren** (wail, yelp or two-tone
+    hi-lo, recognised by how the pitch moves) and **mosquito whine** (a
+    wandering wingbeat tone with harmonics). These also mark the frequency
+    they heard on the waterfall.
+  - *The YAMNet sound classifier* — Google's 521-class AudioSet model, which
+    ships with SoundRadar and runs in a background worker: **bird, dog, siren,
+    insect / mosquito, traffic, train / rail, crash / smash, door**. About
+    16 MB, loaded from this site only when you switch one of these on.
+
+  Each detector has a live confidence meter with its threshold marked on it,
+  so you set the threshold by watching, and the detection log exports as CSV
+  — leave a tablet in a room overnight and come back to a list of when the
+  thing happened. Adding a new sound is one catalog entry (see `CLAUDE.md`).
+  Crashes are the weakest category: YAMNet tends to hear a small glass break
+  as chimes or birdsong.
 - **Sessions** — named save states, each with its own display settings and
   markers, switched from the Session menu. One survey per room, per machine,
   per site visit. The app always opens in the session you were last in, and
@@ -101,11 +120,19 @@ and can be revoked at any time.
 
 ## Privacy
 
-There is no server component and no network traffic. Audio is processed in
-the page via the Web Audio API and is never recorded, uploaded or persisted.
-The only things stored are your sessions — display settings and markers — plus
-your theme, in this browser's `localStorage` (keys prefixed `soundradar.`).
-Exporting writes a JSON file to your own disk; nothing is sent anywhere.
+There is no server component and no network traffic beyond loading the app
+itself. Audio is processed in the page via the Web Audio API and is never
+recorded, uploaded or persisted. Sound detection is local too: the YAMNet
+model and its runtime are files in this repository, fetched from the same
+place as the rest of the app, and they run in a worker in your tab — no
+audio, features or results ever leave the device. That is the point of doing
+it this way; every comparable app answers "what was that sound?" by sending
+your microphone to a server.
+
+The only things stored are your sessions — display settings, markers and which
+detectors are on — plus your theme, in this browser's `localStorage` (keys
+prefixed `soundradar.`). Exporting writes a file to your own disk; nothing is
+sent anywhere.
 
 ## Repository layout
 
@@ -115,13 +142,20 @@ css/style.css         all styling, themed via CSS custom properties
 js/app.js             composition root: settings, wiring, render loop
 js/core/              reusable, DOM-free analysis and rendering modules
 js/core/sessions.js   named save states, and JSON export/import of all of them
-js/core/alarm.js      the marker alarm tone
+js/core/alarm.js      the marker alarm tone and the detection chime
+js/core/detect/       sound detection: catalog, engine, rules, YAMNet worker
+js/core/capture.js    raw-audio tap (AudioWorklet) for the classifier
+js/vendor/            TensorFlow.js, vendored as a single ES module
+models/yamnet/        the YAMNet model weights and class map
 js/ruler.js           the shared frequency ruler between the plates
 js/markers-table.js   the marker report table
+js/detect-menu.js     the Detect menu: detector toggles, meters, thresholds
+js/detections-table.js the detection log
 js/theme.js           reads canvas colours out of the stylesheet
 CHANGELOG.md          what changed in each release
 SPEC.md               project goals and the shared audio pipeline
 spec-spectrum-analyzer.md   design intent for the analyzer tool
+spec-recognition.md   design intent for signal recognition / detection
 CLAUDE.md             architecture notes and conventions for contributors
 ```
 
@@ -139,4 +173,7 @@ edit the files and reload the page. Two conventions matter:
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT — see [LICENSE](./LICENSE). Two third-party components are vendored
+under their own licence, Apache-2.0: TensorFlow.js (`js/vendor/`) and the
+YAMNet model (`models/yamnet/`). Each directory has a README with its source
+and version.

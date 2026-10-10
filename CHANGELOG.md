@@ -4,6 +4,42 @@ Notable changes to SoundRadar. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and version numbers
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Sound detection** — a Detect menu that turns the analyzer from "show me
+  what is there" into "tell me when *that* happens". Switch a sound on and
+  every time it is heard it is logged, labelled on the waterfall at the row it
+  was heard in, and optionally announced with a chime.
+  - **Pattern rules**, instant and dependency-free: *siren* (wail, yelp or
+    two-tone hi-lo, from how the dominant pitch moves) and *mosquito whine*
+    (a wandering wingbeat tone with a clean 2nd harmonic). They read their
+    own fixed analyser, so the display's FFT size and smoothing never change
+    what they hear, and they mark the frequency on the waterfall.
+  - **YAMNet sound classifier** for *bird, dog, siren, insect / mosquito,
+    traffic, train / rail, crash / smash* and *door*. The model (Apache-2.0,
+    ~16 MB) and TensorFlow.js ship with the app and load from the same site,
+    only once a classifier category is switched on. Inference runs in a
+    module Worker fed by an AudioWorklet tap, so the render loop never pays
+    for it and nothing leaves the device.
+  - Each detector has a live confidence meter with its threshold marked on
+    it, a threshold slider, and a bell. Events are debounced (hold time,
+    release level, refractory period), so one bark is one row, not forty.
+  - A **Detections** log under the markers report: time, sound and the
+    AudioSet class or siren style that matched, peak confidence, duration,
+    frequency. Exports as CSV. Kept in memory per session; not saved.
+  - Which detectors are on, their thresholds and bells are part of a
+    session's settings — they switch with the session and travel in the JSON
+    export.
+  - Adding a sound is one catalog entry: a `yamnetCategory` listing AudioSet
+    classes, or a rule module scored from the spectrum.
+
+### Changed
+
+- "Disable all alarms" now also clears detector bells, and the Display menu's
+  alarm section is called *Alarms*.
+
 ## [0.2.0] — 2026-08-22
 
 The survey release: your work now has somewhere to live, somewhere to go, and

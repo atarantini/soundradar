@@ -41,6 +41,39 @@ export function checkSupport() {
   return { ok: true, reason: '' };
 }
 
+/**
+ * A second analyser on the same input, with settings of its own that the
+ * display controls never touch. For consumers whose numbers must not move when
+ * the user changes FFT size or smoothing to suit the picture — the sound
+ * detectors. Created on first read, once the context exists, and kept across
+ * restarts like any other tap.
+ */
+export class AnalyserTap {
+  constructor(engine, { fftSize = 4096, smoothing = 0.5 } = {}) {
+    this.engine = engine;
+    this.fftSize = fftSize;
+    this.smoothing = smoothing;
+    this.node = null;
+    this.data = new Float32Array(fftSize / 2);
+  }
+
+  /** Latest spectrum in dBFS, or null when capture is not live. */
+  read() {
+    const e = this.engine;
+    if (!e.ctx || !e.running || e.paused) return null;
+    if (!this.node) {
+      this.node = e.ctx.createAnalyser();
+      this.node.fftSize = this.fftSize;
+      this.node.smoothingTimeConstant = this.smoothing;
+      this.node.minDecibels = -150;
+      this.node.maxDecibels = 0;
+      e.addTap(this.node);
+    }
+    this.node.getFloatFrequencyData(this.data);
+    return this.data;
+  }
+}
+
 export class AudioEngine {
   constructor() {
     this.ctx = null;
@@ -55,6 +88,7 @@ export class AudioEngine {
     this.error = '';
     this._fftSize = 4096;
     this._smoothing = 0.7;
+    this.taps = new Set(); // extra nodes fed from the source, e.g. the capture tap
     this.onstatechange = null;
   }
 
@@ -129,6 +163,9 @@ export class AudioEngine {
     this.analyser.smoothingTimeConstant = this._smoothing;
     this.setFftSize(this._fftSize);
     this.source.connect(this.analyser);
+    // Every start makes a new source; taps follow it so a device switch does
+    // not silently cut off whatever is listening downstream.
+    for (const tap of this.taps) this.source.connect(tap);
 
     // A track ending (device unplugged, permission revoked mid-session) is
     // silent otherwise — the display would just freeze.
@@ -165,6 +202,24 @@ export class AudioEngine {
   setSmoothing(v) {
     this._smoothing = v;
     if (this.analyser) this.analyser.smoothingTimeConstant = v;
+  }
+
+  /**
+   * Feed another node from the input, alongside the analyser, now and after
+   * every restart. The node must belong to `this.ctx`.
+   */
+  addTap(node) {
+    this.taps.add(node);
+    if (this.source) this.source.connect(node);
+  }
+
+  removeTap(node) {
+    if (!this.taps.delete(node)) return;
+    try {
+      this.source?.disconnect(node);
+    } catch {
+      /* was not connected */
+    }
   }
 
   /** Latest spectrum in dBFS, or null when there is nothing to show. */

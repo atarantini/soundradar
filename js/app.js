@@ -3,11 +3,15 @@
 // Owns the settings, wires the toolbar menus, and drives the single animation
 // frame loop that redraws both plates, the shared ruler, and the report.
 
-import { AudioEngine, FFT_SIZES, checkSupport } from './core/audio.js';
+import { AudioEngine, AnalyserTap, FFT_SIZES, checkSupport } from './core/audio.js';
 import { Settings, WATERFALL_SPANS, MIN_SPAN_HZ } from './core/settings.js';
 import { MarkerStore } from './core/markers.js';
 import { SessionStore, DEFAULT_SESSION_ID } from './core/sessions.js';
 import { AlarmTone } from './core/alarm.js';
+import { DETECTORS } from './core/detect/catalog.js';
+import { DetectionEngine, SPECTRUM_INPUT } from './core/detect/engine.js';
+import { DetectionLog } from './core/detect/log.js';
+import { YamnetClassifier } from './core/detect/yamnet.js';
 import { SpectrumView } from './core/spectrum.js';
 import { Waterfall } from './core/waterfall.js';
 import { PlotInput, zoomRange, panRange } from './core/input.js';
@@ -25,6 +29,8 @@ import {
 import { readTheme } from './theme.js';
 import { Ruler } from './ruler.js';
 import { MarkersTable } from './markers-table.js';
+import { DetectMenu } from './detect-menu.js';
+import { DetectionsTable } from './detections-table.js';
 
 const GUTTER_L = 44; // CSS px reserved for the dB / time axis on each plate
 const THEME_KEY = 'soundradar.theme';
@@ -32,6 +38,12 @@ const SESSIONS_KEY = 'soundradar.sessions.v1';
 const SESSION_PREFIX = 'soundradar.s.'; // + `<id>.settings.v1` / `<id>.markers.v1`
 
 const PALETTE = ['#2a3fd4', '#0f9d58', '#d4762a', '#8e44c4', '#c02b5e', '#0d8ea8', '#7a8c1f', '#b8342b'];
+// Detection labels are drawn on the dark waterfall as well as on paper, so
+// these sit at mid luminance where the marker palette runs dark.
+const DETECT_PALETTE = [
+  '#4f8cff', '#2fbf71', '#ff8a3d', '#b46cff', '#ff4f8b',
+  '#22c3d6', '#c8d440', '#ff5a4d', '#f2c12e', '#9aa7b8',
+];
 
 const $ = (id) => document.getElementById(id);
 
@@ -99,6 +111,12 @@ const settings = new Settings(sessionKeys.settings, { colorMap: 'viridis', freqS
 const engine = new AudioEngine();
 const markers = new MarkerStore({ storageKey: sessionKeys.markers, palette: PALETTE });
 const alarm = new AlarmTone({ getContext: () => engine.ctx });
+const detectLog = new DetectionLog();
+const detection = new DetectionEngine({ catalog: DETECTORS, log: detectLog, onEvent: onDetection });
+const classifier = new YamnetClassifier();
+const detectTap = new AnalyserTap(engine, SPECTRUM_INPUT);
+const detectorColors = new Map(DETECTORS.map((d, i) => [d.id, DETECT_PALETTE[i % DETECT_PALETTE.length]]));
+const colorOfDetector = (id) => detectorColors.get(id) || DETECT_PALETTE[0];
 
 const spectrumCanvas = $('spectrumCanvas');
 const spectrumOverlay = $('spectrumOverlay');
@@ -132,6 +150,24 @@ const table = new MarkersTable({
     highlightId = id;
     needsIdleDraw = true;
   },
+});
+
+const detectMenu = new DetectMenu({
+  rulesEl: $('detectRules'),
+  modelEl: $('detectModel'),
+  badgeEl: $('detectBadge'),
+  stateEl: $('modelState'),
+  catalog: DETECTORS,
+  colorOf: colorOfDetector,
+  onChange: setDetector,
+});
+
+const detectionsTable = new DetectionsTable({
+  bodyEl: $('detectionRows'),
+  emptyEl: $('detectionsEmpty'),
+  countEl: $('detectionCount'),
+  log: detectLog,
+  colorOf: colorOfDetector,
 });
 
 // ---------- layout ----------
@@ -243,7 +279,9 @@ settings.subscribe((s, tags) => {
   }
   if (tags.has('range') || tags.has('level') || tags.has('palette') || tags.has('all')) waterfall.invalidate();
   if (tags.has('range') || tags.has('all')) spectrum.resetPeaks();
+  if (tags.has('detect') || tags.has('all')) syncDetection();
   syncControls();
+  syncAlarmActions();
   needsIdleDraw = true;
 });
 
@@ -336,16 +374,19 @@ $('alarmMuted').addEventListener('change', (e) => settings.set({ alarmMuted: e.t
 $('alarmMuteToggle').addEventListener('click', () => settings.set({ alarmMuted: !settings.v.alarmMuted }, []));
 
 // Muting is a stop button; this is the off switch. Nothing to confirm — the
-// bells are still in the report, one click each from being armed again.
+// bells are still in the report and the Detect menu, one click each from
+// being armed again. It covers detector bells too: one switch for every alarm.
 $('alarmDisableAll').addEventListener('click', () => {
-  if (!markers.disableAllAlarms()) return;
+  const markersOff = markers.disableAllAlarms();
+  const detectorsOff = disableDetectorAlarms();
+  if (!markersOff && !detectorsOff) return;
   alarm.reset();
   needsIdleDraw = true;
 });
 
 // Only offer the bulk action when there is something to switch off.
 function syncAlarmActions() {
-  $('alarmDisableAll').disabled = markers.armedCount() === 0;
+  $('alarmDisableAll').disabled = markers.armedCount() === 0 && armedDetectorCount() === 0;
 }
 markers.subscribe(syncAlarmActions);
 syncAlarmActions();
@@ -387,6 +428,10 @@ function activateSession(id) {
   settings.useStorage(keys.settings); // notifies 'all' → controls, engine, plots
   markers.useStorage(keys.markers);
   alarm.reset();
+  // Detections belong to the measurement they were heard in.
+  detection.reset();
+  detectLog.clear();
+  syncDetectionsPanel();
   spectrum.resetPeaks();
   waterfall.clear();
   layout();
@@ -510,6 +555,78 @@ $('reportToggle').addEventListener('click', () => {
   requestAnimationFrame(layout);
 });
 
+// ---------- detection ----------
+
+function setDetector(id, patch) {
+  const current = settings.v.detectors[id] || {};
+  settings.set({ detectors: { ...settings.v.detectors, [id]: { ...current, ...patch } } }, ['detect']);
+}
+
+function armedDetectorCount() {
+  return Object.values(settings.v.detectors).filter((d) => d.on && d.alarm).length;
+}
+
+/** Clear every detector bell in one settings write. Returns how many were armed. */
+function disableDetectorAlarms() {
+  const armed = armedDetectorCount();
+  if (!Object.values(settings.v.detectors).some((d) => d.alarm)) return 0;
+  const next = {};
+  for (const [id, d] of Object.entries(settings.v.detectors)) next[id] = { ...d, alarm: false };
+  settings.set({ detectors: next }, ['detect']);
+  return armed;
+}
+
+/**
+ * Bring the running detectors in line with settings. The classifier is only
+ * loaded while a YAMNet category is on, and dropped again when none is.
+ */
+function syncDetection() {
+  detection.configure(settings.v.detectors);
+  if (detection.needsModel) classifier.enable(engine);
+  else classifier.disable();
+  detectMenu.sync(settings.v.detectors);
+  syncDetectionsPanel();
+}
+
+// The log takes room from the plates, so it only shows while it has a job:
+// something is switched on, or there is something in it to read.
+function syncDetectionsPanel() {
+  const show = detection.slots.size > 0 || detectLog.entries.length > 0;
+  if ($('detections').hidden === show) $('detections').hidden = !show;
+}
+
+function onDetection(kind, entry, def) {
+  if (kind === 'start') {
+    const s = settings.v;
+    if (s.detectors[def.id]?.alarm && !s.alarmMuted) alarm.chime(s.alarmVolume);
+    syncDetectionsPanel();
+  }
+  needsIdleDraw = true;
+}
+
+classifier.onscores = (scores, t) => {
+  // A window can land just after a pause; it describes audio the user has
+  // already stopped looking at.
+  if (engine.running && !engine.paused) detection.updateScores(scores, t);
+};
+classifier.onstate = () => detectMenu.setModel(classifier, engine.running && !engine.paused);
+
+$('clearDetections').addEventListener('click', () => {
+  detectLog.clear();
+  syncDetectionsPanel();
+  needsIdleDraw = true;
+});
+$('exportDetections').addEventListener('click', () => {
+  if (!detectLog.entries.length) return;
+  downloadBlob(new Blob([detectLog.toCsv()], { type: 'text/csv' }), `${timestampSlug('soundradar-detections')}.csv`);
+});
+$('detectionsToggle').addEventListener('click', () => {
+  const collapsed = $('detections').classList.toggle('collapsed');
+  $('detectionsToggle').textContent = collapsed ? 'Show' : 'Hide';
+  $('detectionsToggle').setAttribute('aria-expanded', String(!collapsed));
+  requestAnimationFrame(layout);
+});
+
 // ---------- capture ----------
 
 const RUN_LABEL = { idle: 'Start capture', requesting: 'Starting…', live: 'Pause', paused: 'Resume', error: 'Try again' };
@@ -538,6 +655,7 @@ function paintState() {
     curtain.classList.add('hidden');
   }
   syncControls();
+  detectMenu.setModel(classifier, state === 'live');
   // Pausing suspends the context: one more frame lets the alarms notice and the
   // report drop their "sounding" flags.
   needsIdleDraw = true;
@@ -555,6 +673,9 @@ async function startCapture() {
     engine.setSmoothing(settings.v.smoothing);
     waterfall.clear();
     spectrum.resetPeaks();
+    // The context exists now, so the classifier can tap it. Later restarts
+    // (a device switch) keep the tap: the engine re-connects it.
+    if (detection.needsModel) classifier.enable(engine);
     $('statusDevice').textContent = info.label || 'System default input';
     await refreshDevices();
   } catch {
@@ -788,11 +909,69 @@ function drawTimeAxis(ctx, rect) {
   ctx.restore();
 }
 
+/**
+ * Detections on the waterfall, at the rows they were heard in: a bar in a lane
+ * along the left edge spanning the event, a label at its start, and — for
+ * detectors that know where in frequency they heard it — a trace at that
+ * frequency. The waterfall is the history; this annotates it. Left, beside the
+ * time axis the rows are read against, and clear of the zoom pad.
+ */
+function drawDetections(ctx, rect) {
+  if (!detectLog.entries.length) return;
+  const s = settings.v;
+  const r = dpr();
+  const lane = 4 * r;
+  const laneX = rect.x + 6 * r; // past the time-axis tick marks
+  const pad = 4 * r;
+  const half = 8 * r;
+  let lastLabelY = -Infinity;
+  ctx.save();
+  ctx.font = `600 ${10 * r}px ${theme.monoFont}`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  for (const e of detectLog.entries) {
+    const top = waterfall.yForTime(e.open ? Infinity : e.t1);
+    if (!Number.isFinite(top)) continue; // ended before the visible history
+    const start = waterfall.yForTime(e.t0);
+    const bottom = Number.isFinite(start) ? start : rect.y + rect.h;
+    const h = Math.max(2 * r, bottom - top);
+    const color = colorOfDetector(e.detectorId);
+
+    ctx.fillStyle = color;
+    ctx.fillRect(laneX, top, lane, h);
+    if (Number.isFinite(e.freq)) {
+      const x = freqToX(e.freq, s, rect.w, rect.x);
+      if (x >= rect.x && x <= rect.x + rect.w) {
+        ctx.globalAlpha = 0.8;
+        ctx.fillRect(Math.round(x) - r, top, 2 * r, h);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Labels sit at the start of each event; one that would land on the
+    // previous label is skipped rather than stacked illegibly.
+    const ly = clamp(bottom - half, rect.y + half, rect.y + rect.h - half);
+    if (Math.abs(ly - lastLabelY) < 2 * half) continue;
+    lastLabelY = ly;
+    const text = `${e.label} ${Math.round(e.confidence * 100)}%`;
+    const boxW = ctx.measureText(text).width + 6 * r + 3 * pad;
+    const bx = laneX + lane + 4 * r;
+    ctx.fillStyle = theme.detChip;
+    ctx.fillRect(bx, ly - half, boxW, 2 * half);
+    ctx.fillStyle = color;
+    ctx.fillRect(bx + pad, ly - 3 * r, 6 * r, 6 * r);
+    ctx.fillStyle = theme.detChipText;
+    ctx.fillText(text, bx + 2 * pad + 6 * r, ly);
+  }
+  ctx.restore();
+}
+
 function drawOverlay(ctx, canvas, rect, view) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawHearingBand(ctx, rect, settings.v, theme);
   if (view === 'waterfall') drawTimeAxis(ctx, rect);
   drawMarkerBands(ctx, rect);
+  if (view === 'waterfall') drawDetections(ctx, rect);
   drawSelection(ctx, rect, view);
   drawCrosshair(ctx, rect, view);
 }
@@ -842,6 +1021,11 @@ function updateReadout(now, force) {
   }
 
   table.update(settings.v, alarm.active);
+  if ($('menuDetect').open) {
+    detectMenu.update(detection);
+    detectMenu.setModel(classifier, engine.running && !engine.paused);
+  }
+  if (!$('detections').hidden) detectionsTable.update();
 }
 
 // ---------- main loop ----------
@@ -868,6 +1052,10 @@ function frame(now) {
   });
 
   markers.updateLevels(latestData, engine.sampleRate, engine.fftSize, live);
+  if (!live) detection.idle(now);
+  else if (detection.needsSpectrum) {
+    detection.updateSpectrum(detectTap.read(), engine.sampleRate, detectTap.fftSize, now);
+  }
   alarm.update({
     markers: markers.markers,
     levelOf: (id) => markers.level(id),
@@ -968,6 +1156,7 @@ if (!support.ok) engine.error = support.reason;
 
 settings.setNyquist(24000);
 renderSessions();
+syncDetection();
 layout();
 syncControls();
 paintState();

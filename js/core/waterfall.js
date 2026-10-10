@@ -299,6 +299,29 @@ export class Waterfall {
     };
   }
 
+  /**
+   * Plot Y of the row recorded at (or just before) time `t`, on the clock
+   * `push(now)` is given. Rows carry their own timestamps, so this stays right
+   * across pauses and background gaps, where rows are not evenly spaced in
+   * time. NaN when `t` is older than anything on screen.
+   */
+  yForTime(t) {
+    const { y, h } = this.rect;
+    const visible = Math.min(this.count, h);
+    if (visible <= 0) return NaN;
+    if (t >= this.rowTime[this._rowAt(0)]) return y;
+    if (t < this.rowTime[this._rowAt(visible - 1)]) return NaN;
+    // Age grows downward and time shrinks with it: rowTime(lo) > t >= rowTime(hi).
+    let lo = 0;
+    let hi = visible - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (this.rowTime[this._rowAt(mid)] > t) lo = mid;
+      else hi = mid;
+    }
+    return y + hi;
+  }
+
   /** Frequency → column X, matching what the renderer used. */
   freqToPlotX(freq, settings) {
     return freqToX(freq, settings, this.rect.w, this.rect.x);

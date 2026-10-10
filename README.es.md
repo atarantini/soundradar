@@ -60,6 +60,26 @@ desde un subdirectorio funciona.
   la pantalla. Silenciar apaga todas las alarmas sin desarmarlas;
   "Disable all alarms" las apaga a todas. (Usá auriculares — con parlantes
   el sonido retroalimenta al micrófono.)
+- **Detección de sonidos** — activá en el menú Detect los sonidos que te
+  interesan y cada vez que se escucha uno queda registrado, marcado en la
+  cascada en el momento en que ocurrió y (si querés) anunciado con un
+  campanazo. Dos tipos de detector, lado a lado:
+  - *Reglas de patrón*, instantáneas y livianas: **sirena** (ulular, yelp o
+    dos tonos, reconocida por cómo se mueve el tono) y **zumbido de
+    mosquito** (un tono de aleteo que deambula, con armónicos). Estas además
+    marcan en la cascada la frecuencia que escucharon.
+  - *El clasificador de sonidos YAMNet* — el modelo de Google de 521 clases
+    de AudioSet, que viene incluido con SoundRadar y corre en un worker en
+    segundo plano: **pájaro, perro, sirena, insecto / mosquito, tránsito,
+    tren, choque / rotura, puerta**. Unos 16 MB, que se cargan desde este
+    mismo sitio sólo cuando activás alguno de ellos.
+
+  Cada detector tiene un medidor de confianza en vivo con su umbral marcado,
+  así el umbral se ajusta mirando, y el registro de detecciones se exporta
+  como CSV — dejá una tablet en una habitación toda la noche y volvé a una
+  lista de cuándo pasó. Agregar un sonido nuevo es una entrada en el catálogo
+  (ver `CLAUDE.md`). Los choques son la categoría más débil: YAMNet tiende a
+  oír la rotura de un vidrio chico como campanitas o pájaros.
 - **Sesiones** — estados guardados con nombre, cada uno con su propia
   configuración de pantalla y marcadores, que se cambian desde el menú de
   Sesión. Un relevamiento por habitación, por máquina, por visita a un
@@ -107,12 +127,21 @@ prefijos de proveedor. El permiso de micrófono se solicita al presionar
 
 ## Privacidad
 
-No hay componente de servidor ni tráfico de red. El audio se procesa en la
-página mediante la Web Audio API y nunca se graba, sube ni persiste. Lo
-único que se guarda son tus sesiones — configuración de pantalla y
-marcadores — además de tu tema, en el `localStorage` de este navegador
-(claves con el prefijo `soundradar.`). Exportar escribe un archivo JSON en
-tu propio disco; no se envía nada a ningún lado.
+No hay componente de servidor ni tráfico de red más allá de cargar la propia
+app. El audio se procesa en la página mediante la Web Audio API y nunca se
+graba, sube ni persiste. La detección de sonidos también es local: el modelo
+YAMNet y su runtime son archivos de este repositorio, que se descargan del
+mismo lugar que el resto de la app y corren en un worker dentro de tu
+pestaña — ni el audio, ni sus características, ni los resultados salen nunca
+del dispositivo. Ése es el sentido de hacerlo así: todas las apps
+comparables responden "¿qué fue ese sonido?" mandando tu micrófono a un
+servidor.
+
+Lo único que se guarda son tus sesiones — configuración de pantalla,
+marcadores y qué detectores están activos — además de tu tema, en el
+`localStorage` de este navegador (claves con el prefijo `soundradar.`).
+Exportar escribe un archivo en tu propio disco; no se envía nada a ningún
+lado.
 
 ## Estructura del repositorio
 
@@ -122,13 +151,20 @@ css/style.css         todos los estilos, con tema vía propiedades CSS personali
 js/app.js             raíz de composición: settings, cableado, bucle de render
 js/core/              módulos de análisis y renderizado reutilizables, sin DOM
 js/core/sessions.js   estados guardados con nombre, y exportación/importación JSON de todos ellos
-js/core/alarm.js      el tono de la alarma de marcador
+js/core/alarm.js      el tono de la alarma de marcador y el campanazo de detección
+js/core/detect/       detección de sonidos: catálogo, motor, reglas, worker de YAMNet
+js/core/capture.js    toma de audio crudo (AudioWorklet) para el clasificador
+js/vendor/            TensorFlow.js, incluido como un único módulo ES
+models/yamnet/        los pesos del modelo YAMNet y su mapa de clases
 js/ruler.js           la regla de frecuencia compartida entre las placas
 js/markers-table.js   la tabla de informe de marcadores
+js/detect-menu.js     el menú Detect: detectores, medidores, umbrales
+js/detections-table.js el registro de detecciones
 js/theme.js           lee los colores del canvas desde la hoja de estilos
 CHANGELOG.md          qué cambió en cada versión
 SPEC.md               objetivos del proyecto y el pipeline de audio compartido
 spec-spectrum-analyzer.md   intención de diseño para la herramienta de analizador
+spec-recognition.md   intención de diseño para el reconocimiento / detección de señales
 CLAUDE.md             notas de arquitectura y convenciones para contribuidores
 ```
 
@@ -148,4 +184,7 @@ test — editá los archivos y recargá la página. Dos convenciones importan:
 
 ## Licencia
 
-MIT — ver [LICENSE](./LICENSE).
+MIT — ver [LICENSE](./LICENSE). Dos componentes de terceros vienen incluidos
+bajo su propia licencia, Apache-2.0: TensorFlow.js (`js/vendor/`) y el modelo
+YAMNet (`models/yamnet/`). Cada directorio tiene un README con su origen y
+versión.

@@ -117,20 +117,41 @@
         <label class="check"><input type="checkbox" id="spectrumFill"><span>Fill under trace</span></label>
         <label class="check"><input type="checkbox" id="showHearingBand"><span>Dim inaudible range</span></label>
         <hr class="menu-rule">
-        <p class="tag">Marker alarm</p>
+        <p class="tag">Alarms</p>
         <label class="field field-row"><span class="tag">Volume</span>
           <input type="range" id="alarmVolume" min="0" max="1" step="0.05">
           <output class="num" id="alarmVolumeVal">25%</output>
         </label>
         <label class="check"><input type="checkbox" id="alarmMuted"><span>Mute alarms</span></label>
         <button class="btn btn-block" id="alarmDisableAll" type="button">Disable all alarms</button>
-        <p class="hint">Arm the alarm on a marker in the report, and it beeps whenever that band reaches its level &mdash; higher and faster the louder it gets, so you can find a source by ear. Muting silences every alarm but leaves it armed; disabling switches them all off. Wear headphones: over speakers the beep feeds back into the microphone.</p>
+        <p class="hint">Arm the alarm on a marker in the report, and it beeps whenever that band reaches its level &mdash; higher and faster the louder it gets, so you can find a source by ear. A sound detector's bell (in Detect) chimes once per detection instead. Muting silences every alarm but leaves it armed; disabling switches them all off. Wear headphones: over speakers the beep feeds back into the microphone.</p>
         <hr class="menu-rule">
         <label class="field field-row"><span class="tag">Input</span>
           <select id="deviceSelect"><option value="">System default</option></select>
         </label>
         <button class="btn btn-block" id="savePng" type="button">Save view as PNG</button>
         <button class="btn btn-block" id="resetAll" type="button">Reset all settings</button>
+      </div>
+    </details>
+
+    <details class="menu" id="menuDetect">
+      <summary>Detect <b class="menu-badge" id="detectBadge" hidden></b></summary>
+      <div class="menu-panel menu-panel-wide">
+        <p class="tag">Pattern rules &middot; instant</p>
+        <div class="det-list" id="detectRules"></div>
+        <hr class="menu-rule">
+        <p class="tag">Sound classifier</p>
+        <div class="model-card" id="modelCard">
+          <div class="model-card-head">
+            <span class="model-card-name">YAMNet</span>
+            <span class="model-card-meta" id="modelMeta">16 MB &middot; Apache-2.0 &middot; 521 sounds</span>
+          </div>
+          <p class="model-state" id="modelState">Not loaded</p>
+          <p class="hint">Google's general-purpose sound classifier. It ships with SoundRadar and loads from this site the first time you switch on one of the sounds below. Audio is analysed in this tab; nothing is uploaded.</p>
+        </div>
+        <div class="det-list" id="detectModel"></div>
+        <hr class="menu-rule">
+        <p class="hint">Switch a sound on to log every time it is heard. The bar shows how sure the detector is right now, and the mark on it is the level that counts as a detection &mdash; move it with the slider. The bell chimes on each new detection, at the alarm volume set in Display.</p>
       </div>
     </details>
   </nav>
@@ -233,6 +254,34 @@
       <tbody id="markerRows"></tbody>
     </table>
     <p class="empty" id="markersEmpty">No markers yet. Double-click a plate or the ruler to plant one at that frequency, then drag its pin along the ruler to adjust. Markers are saved in this browser.</p>
+  </div>
+</section>
+
+<!-- ══ Detection log ══ — shown while any detector is on. -->
+<section class="report report-detections" id="detections" hidden>
+  <header class="report-head">
+    <h2 class="report-title">Detections</h2>
+    <span class="report-count" id="detectionCount">0</span>
+    <span class="report-spacer"></span>
+    <button class="link" id="exportDetections" type="button">Export CSV</button>
+    <button class="link link-danger" id="clearDetections" type="button">Clear</button>
+    <button class="link report-toggle" id="detectionsToggle" type="button" aria-expanded="true">Hide</button>
+  </header>
+  <div class="report-body" id="detectionsBody">
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th scope="col" class="col-when">When</th>
+          <th scope="col" class="col-sound">Sound</th>
+          <th scope="col" class="col-conf">Confidence</th>
+          <th scope="col" class="num-col col-dur">Duration</th>
+          <th scope="col" class="num-col col-hz">Frequency</th>
+          <th scope="col" class="col-source">Detector</th>
+        </tr>
+      </thead>
+      <tbody id="detectionRows"></tbody>
+    </table>
+    <p class="empty" id="detectionsEmpty">Nothing heard yet. Each detection is listed here as it happens and labelled on the waterfall. The list is kept until you clear it or switch sessions, but it is not saved &mdash; export it as CSV to keep it.</p>
   </div>
 </section>
 

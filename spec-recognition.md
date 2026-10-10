@@ -29,6 +29,61 @@ the spec keeps them separate because each is useful without the ones after it:
 Questions 1–3 preserve the project's zero-install promise completely. Question
 4 does not, and is therefore an explicit, per-model, opt-in download.
 
+> **Status (first pass, implemented).** A modular detector layer answers
+> questions 3 and 4 for a first set of everyday sounds — see *Detector
+> modules* below. Shipped: the catalog/engine/trigger/log, the capture tap and
+> resampler, a fixed-settings analyser tap, two Tier 2 pattern rules (siren,
+> mosquito whine) and Tier 3 YAMNet categories (bird, dog, siren, insect,
+> traffic, train, crash, door). Tier 1 user-taught templates remain the next
+> step and slot into the same catalog.
+
+## Detector modules
+
+Every detector, whatever tier it comes from, is one entry in
+`js/core/detect/catalog.js` and answers one question: *how sure am I, right
+now, 0–1* — optionally with where in frequency, and which variant (an
+AudioSet class name, a siren style). Everything that turns a score into a
+record lives once, in `DetectionEngine`:
+
+- **Trigger** — an event starts once the score has held the threshold for
+  `minMs` (flicker above 0.8 × threshold does not restart the wait), ends
+  after `releaseMs` below that release level, and cannot restart for
+  `refractoryMs`. One bark is one row.
+- **Log** — `{ t0, t1, label, detail, source, confidence (peak), freq }`,
+  newest first, in memory, CSV export. Not part of a session's saved state.
+- **Alarm** — a detector's bell plays a one-shot chime on the shared context;
+  mute and "Disable all alarms" apply unchanged, as this spec required.
+- **Configuration** — `settings.detectors`, `{ [id]: { on, alarm,
+  threshold? } }`, so it is per session and travels in the JSON export.
+
+Two inputs, named by a detector's `source`:
+
+| Source | Fed by | Rate | Used by |
+|---|---|---|---|
+| `spectrum` | `AnalyserTap` — a second analyser at fixed FFT 4096 / smoothing 0.5, independent of the display | every animation frame | pattern rules |
+| `yamnet` | `CaptureTap` (AudioWorklet) → module Worker → 16 kHz resampler → YAMNet | a 0.975 s window every 0.5 s | AudioSet categories |
+
+Adding a sound is adding an entry: `yamnetCategory({ id, label, classes })`
+with the AudioSet class names that count as it, or a rule module under
+`rules/` for something with a recognisable spectral shape. The menu, the log,
+the waterfall labels, settings and the alarm all follow the catalog.
+
+What the first pass taught:
+
+- **Rules must not read the display analyser.** A user zooming with a 32k FFT
+  and heavy smoothing smears a siren sweep past recognition. The rules read
+  their own fixed analyser tap.
+- **Animation frames are not a hop, but they are good enough with a grid.**
+  Rules put their track on a `RateTrack` (fixed slots, short frame gaps
+  bridged by holding, long gaps left as gaps) and were checked at 20, 30, 60
+  and 144 fps.
+- **Real sirens are messier than textbook ones.** Two vehicles at once,
+  horn harmonics and Doppler put stray peaks on the track; the two-tone check
+  finds the dominant pitch pair and judges each tone's dwell on its own, and
+  needs ~10 s of history to see three beats of a slow hi-lo.
+- **YAMNet is weak on small glass breaks**, which it tends to hear as chimes
+  or birdsong. "Crash / smash" is the least reliable category.
+
 ## Principles
 
 - **Local-only.** No recognition feature may send audio, features, or
@@ -443,9 +498,23 @@ is the normal case for unattended monitoring.
    impressive. *Recommendation: build 0–2 first, then Tier 3 as a strictly
    optional module — and if it ships, ship the embedding+k-NN hybrid rather
    than raw class labels.*
+   **Decided:** Tier 3 ships, as YAMNet class-group categories, because the
+   everyday sounds people asked for (birds, dogs, traffic, doors) are exactly
+   what AudioSet labels and no rule can recognise. It stays opt-in in the way
+   that matters: nothing loads until a category is switched on. The runtime
+   **and the weights** are vendored (`js/vendor/`, `models/yamnet/`), so the
+   "static host" a model comes from is the app itself and recognition causes
+   no third-party request at all. TensorFlow.js was chosen over ONNX Runtime
+   *for YAMNet specifically*: Google publishes YAMNet as a TF.js graph model
+   that takes the raw 16 kHz waveform, so there is no JavaScript mel frontend
+   to write and no unofficial conversion to trust. ORT remains the candidate
+   for models that are ONNX-native. The embedding + k-NN hybrid is still the
+   right next step for Tier 3.
 2. **`SharedArrayBuffer` or `postMessage`?** *Recommendation: `postMessage`
    with transferables as the baseline, SAB as an upgrade when cross-origin
    isolation happens to be present. Never require headers.*
+   **Decided:** `postMessage` with transferred 4096-sample chunks, worklet →
+   worker over a `MessagePort`, no SAB path.
 3. **Canonical template frame rate.** 50 fps is proposed; it survives the
    waterfall's typical row rate and resolves a Morse dit at 20 WPM. Needs a
    sanity check against the fastest thing worth matching.
@@ -473,6 +542,11 @@ is the normal case for unattended monitoring.
   pipeline change, not a recognition feature, and it belongs in its own spec.
 
 ## Phasing
+
+Done in the first pass: the capture tap and resampler (2), the detector
+catalog, trigger, log and alarm reuse (shared by 3–6), Tier 2 siren patterns
+plus a mosquito-whine rule (5), and Tier 3 YAMNet categories (6, without the
+k-NN hybrid). Tier 0 per-marker descriptors and Tier 1 templates remain.
 
 1. **`features.js` + Tier 0 descriptors.** No plumbing changes, no new
    dependencies, immediately useful. Tonality and modulation rate per marker.

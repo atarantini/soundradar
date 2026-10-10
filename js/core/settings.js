@@ -26,11 +26,35 @@ export const BASE_DEFAULTS = {
   markerBw: 50,
   alarmVolume: 0.25,
   alarmMuted: false,
+  // Sound detectors, by catalog id: `{ on, alarm, threshold? }`. Only what the
+  // user has touched is stored; a missing threshold means the catalog default.
+  detectors: {},
 };
 
 export const WATERFALL_SPANS = [5, 10, 20, 30, 60, 120];
 export const MIN_SPAN_HZ = 4;
 export const ABSOLUTE_MAX_HZ = 96000;
+
+const DETECTOR_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
+const MAX_DETECTORS = 64;
+
+/**
+ * A clean detector map. Ids are not checked against the catalog, so a session
+ * saved by a newer build keeps its settings for detectors this one lacks.
+ */
+function normalizeDetectors(value) {
+  const out = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return out;
+  for (const id of Object.keys(value).slice(0, MAX_DETECTORS)) {
+    const entry = value[id];
+    if (!DETECTOR_ID.test(id) || !entry || typeof entry !== 'object') continue;
+    const clean = { on: Boolean(entry.on), alarm: Boolean(entry.alarm) };
+    const threshold = entry.threshold == null ? NaN : Number(entry.threshold);
+    if (Number.isFinite(threshold)) clean.threshold = clamp(threshold, 0.05, 0.95);
+    out[id] = clean;
+  }
+  return out;
+}
 
 /**
  * Force a settings object into a usable state.
@@ -63,6 +87,7 @@ export function normalize(s, nyquist = 24000) {
   s.spectrumFill = Boolean(s.spectrumFill);
   s.showHearingBand = Boolean(s.showHearingBand);
   s.alarmMuted = Boolean(s.alarmMuted);
+  s.detectors = normalizeDetectors(s.detectors);
   return s;
 }
 

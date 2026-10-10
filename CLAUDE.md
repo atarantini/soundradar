@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-SoundRadar is a browser-based, real-time audio analysis toolkit. Pure HTML/CSS/JS with ES modules, zero build step, runs entirely client-side on the Web Audio API. The tool is a Spectrum Analyzer: a live spectrum plot and a scrolling waterfall/spectrogram sharing one frequency axis, with user-placeable frequency markers.
+SoundRadar is a browser-based, real-time audio analysis toolkit. Pure HTML/CSS/JS with ES modules, zero build step, runs entirely client-side on the Web Audio API. The tool is a Spectrum Analyzer: a live spectrum plot and a scrolling waterfall/spectrogram sharing one frequency axis, with user-placeable frequency markers, plus pluggable sound detectors (pattern rules and the YAMNet classifier) that log and label what they hear.
 
-There is no `package.json`, no bundler, no test runner, and no linter — everything is hand-written vanilla JS loaded directly by the browser via `<script type="module">`.
+There is no `package.json`, no bundler, no test runner, and no linter — everything is hand-written vanilla JS loaded directly by the browser via `<script type="module">`. The one third-party runtime, TensorFlow.js, is vendored as a single flat ES module in `js/vendor/`, and the YAMNet weights it runs are committed under `models/yamnet/`.
 
 ## Running it
 
@@ -24,10 +24,18 @@ There are no automated tests or lint configs in this repo.
 js/app.js             composition root — settings wiring + the render loop
 js/core/              DOM-free analysis/rendering modules (reusable across interfaces)
 js/core/sessions.js   named save states (settings + markers) and whole-store export/import
-js/core/alarm.js      the marker alarm / "finder" tone
+js/core/alarm.js      the marker alarm / "finder" tone, and the detection chime
+js/core/detect/       sound detection: catalog, engine, trigger, log, rules/, YAMNet
+js/core/capture.js    AudioWorklet tap streaming raw samples (+ capture-worklet.js)
+js/core/resample.js   streaming any-rate → any-rate resampler (worker-safe)
+js/core/features.js   Tier 0 spectral descriptors shared by the rules
 js/ruler.js           the shared frequency ruler
 js/markers-table.js   the marker report table
+js/detect-menu.js     the Detect menu (toggles, meters, thresholds, model card)
+js/detections-table.js the detection log report
 js/theme.js           reads canvas colours out of the stylesheet
+js/vendor/            TensorFlow.js 4.22.0, flat ESM build (Apache-2.0)
+models/yamnet/        YAMNet TF.js graph model + class map (Apache-2.0)
 ```
 
 The split matters: `js/core/*` deliberately knows nothing about this app's DOM. Renderers take a `theme` object and an explicit rect rather than reading CSS or element IDs, so a different interface can reuse them. Keep new reusable logic in `core/`, and keep DOM wiring in `app.js` or a view module.
@@ -39,6 +47,8 @@ The split matters: `js/core/*` deliberately knows nothing about this app's DOM. 
 A single `AudioEngine` wraps one shared `AudioContext` + `AnalyserNode`. All views read frequency data from the same analyser via `getFrequencyData()` (a `Float32Array` of dB values from `getFloatFrequencyData`), so every view is guaranteed to agree on FFT size, sample rate, and range settings. It also owns device enumeration (`listDevices`), start/pause/resume/stop, `getLevels()` for the input VU meter, and `sampleRate`/`nyquist`/`binHz` getters. Mic failures are mapped to actionable messages via `START_ERRORS` rather than surfacing raw `DOMException` names.
 
 `SPEC.md` frames this as intentional groundwork for future tools (dB meter, oscilloscope) that would tap the same shared context rather than opening their own.
+
+Other consumers hang off the same source through **taps**: `addTap(node)` / `removeTap(node)` keep a set of nodes connected to the input, and `start()` re-connects them to each new source, so a device switch never silently cuts a consumer off. Two exist: `AnalyserTap`, a second analyser with fixed settings the display controls never touch (the detection rules read it), and `CaptureTap` (`js/core/capture.js`), an AudioWorklet that streams raw samples over a `MessagePort`. Views still read the main analyser; taps are for consumers whose numbers must not move when the user re-tunes the picture.
 
 ### Sessions (`js/core/sessions.js`)
 
@@ -81,7 +91,7 @@ not applied on import.
 2. Draws the spectrum plate via `SpectrumView`.
 3. Advances the waterfall (throttled internally against the selected history span, independent of the frame rate).
 4. Redraws the transparent overlay canvases (crosshair, marker bands, zoom-select rectangle) on top of each plate.
-5. Sounds any armed marker alarms whose band has crossed its trigger level.
+5. Sounds any armed marker alarms whose band has crossed its trigger level, and feeds the spectrum-based detectors (or closes every open detection when capture is not live).
 6. Redraws the ruler and updates the summary strip, input VU, and each marker's live level/trend in the report.
 
 The readout in step 6 is throttled to 10 Hz, but a frame drawn only because
@@ -127,6 +137,21 @@ muting (`alarmMuted`) silences every alarm while leaving markers armed, while
 on every marker in one notification. Beeps are one-shot oscillator + gain pairs, ramped rather than
 gated, because a square edge on a sine clicks.
 
+### Sound detection (`js/core/detect/`)
+
+The modular part is the **catalog** (`catalog.js`): an array of plain detector definitions — `id`, `label`, `description`, `source`, default `threshold`, and event timing (`minMs`, `releaseMs`, `refractoryMs`). A detector only ever answers "how sure am I right now, 0–1", optionally with a frequency and a `detail` (the matching AudioSet class, or the siren style). Two sources:
+
+- `'spectrum'` — a rule with `create() → { update(frame), reset() }`, fed one frame per animation frame from `AnalyserTap` at `SPECTRUM_INPUT` (FFT 4096, smoothing 0.5) — **not** the display analyser, so the user's FFT size and smoothing never change what the rules hear. Rules live in `rules/` and build on `features.js` (`bandProminence`, `levelNear`, `periodicity`, `RateTrack`, …). Animation frames are not a fixed hop, so rules put what they track onto a `RateTrack` grid before asking timing questions of it.
+- `'yamnet'` — a `yamnetCategory({ id, label, classes })` in `yamnet-categories.js`: pure data, scored as the max over its AudioSet classes (YAMNet's outputs are independent sigmoids). Class names must match `yamnet-classes.js` exactly; a typo warns in the console at load.
+
+**To recognise a new sound, add a catalog entry** — a `yamnetCategory` if YAMNet already knows it, a rule module if it has a recognisable spectral shape. Nothing else changes: the menu, log, waterfall labels, settings and alarm all follow the catalog.
+
+`DetectionEngine` (`engine.js`) owns everything that turns scores into records: one `Trigger` per detector (`trigger.js` — hold `minMs` to start, tolerate flicker above `0.8 × threshold`, release after `releaseMs`, then a refractory period, so one bark is one row), the `DetectionLog` entries (`log.js`, in memory, newest first, CSV export), live `scores` for the meters and the `active` set. `configure(settings.detectors)` is the only way detectors are switched; it sets `needsModel` / `needsSpectrum`.
+
+`YamnetClassifier` (`yamnet.js`) owns the classifier: a module Worker (`yamnet-worker.js`) that imports the vendored TF.js, resamples the `CaptureTap` stream to 16 kHz (`resample.js`), and scores a 0.975 s window every 0.5 s (wider if inference is slow; silent windows are skipped). Audio goes worklet → worker over a transferred port and never touches the main thread. The worker is spawned only while a `'yamnet'` detector is on and terminated when none is, which frees the model. Scores are stamped at the window centre on the `performance.now()` clock, so `Waterfall.yForTime()` can put the label on the row it describes — rows carry timestamps, which keeps that right across pauses and background-tab gaps.
+
+Detector configuration is `settings.detectors` — `{ [id]: { on, alarm, threshold? } }`, validated in `normalize()` — so it is per session, travels in the JSON export and resets with "Reset all settings". The log is deliberately not saved. A detector's bell plays `AlarmTone.chime()`; mute applies to it, and "Disable all alarms" clears detector bells as well as marker bells.
+
 ### Input handling (`js/core/input.js`)
 
 `PlotInput` covers mouse, touch, and pen through pointer events on one path. The full gesture vocabulary: drag to pan, wheel/pinch to zoom around the pointer, shift-drag to select a range to zoom into, double click/tap or long press to plant a marker, drag a pin to move it. Callbacks receive canvas-pixel coordinates; frequency math stays in `scale.js`. `zoomRange`/`panRange` are the pure range transforms, shared with the keyboard and the on-screen zoom/pan pad.
@@ -153,4 +178,6 @@ Canvas colours are read out of CSS custom properties via `cssVar()` so a colour 
 - Anything that must survive a reload belongs to a session, not to a new
   top-level `localStorage` key. The theme is the one deliberate exception: it is
   a property of the browser, not of a measurement.
-- `SPEC.md` and `spec-spectrum-analyzer.md` are the source of design intent (goals, planned tools, interaction details) — check them before making product/UX decisions, and update them if a change alters documented behaviour.
+- A new detectable sound is a catalog entry in `js/core/detect/`, never a special case in `app.js`. Detectors stay DOM-free, and recognition stays local: nothing may send audio, features or results off the device (`spec-recognition.md`).
+- `js/core/detect/yamnet-classes.js` is generated from `models/yamnet/yamnet_class_map.csv` — regenerate it rather than editing it, or indices drift from the model.
+- `SPEC.md`, `spec-spectrum-analyzer.md` and `spec-recognition.md` are the source of design intent (goals, planned tools, interaction details) — check them before making product/UX decisions, and update them if a change alters documented behaviour.

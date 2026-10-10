@@ -23,6 +23,8 @@ const SLOW_MS = 520; // beep spacing just above the trigger level
 const FAST_MS = 90;  // ...and at full intensity
 const BEEP_S = 0.075;
 const SPAN_FLOOR_DB = 6; // never map intensity across less than this
+const CHIME_HZ = [1320, 1760]; // detection chime: a rising fourth
+const CHIME_GAP_S = 0.11;
 
 /** 0–1 position of `db` between the trigger level and the display ceiling. */
 export function alarmIntensity(db, triggerDb, ceilingDb) {
@@ -96,6 +98,19 @@ export class AlarmTone {
 
     for (const id of [...this.nextAt.keys()]) if (!seen.has(id)) this.nextAt.delete(id);
     for (const id of [...this.active]) if (!seen.has(id)) this.active.delete(id);
+  }
+
+  /**
+   * A detection chime: two rising pips, so it cannot be mistaken for a marker
+   * beep. Plays on the same context, so a paused capture is silent here too.
+   * @param {number} volume 0–1 master level; 0 (muted) plays nothing
+   */
+  chime(volume) {
+    const ctx = this.getContext();
+    if (!ctx || ctx.state !== 'running' || !(volume > 0)) return;
+    const now = ctx.currentTime;
+    this._beep(ctx, now, CHIME_HZ[0], volume);
+    this._beep(ctx, now + CHIME_GAP_S, CHIME_HZ[1], volume);
   }
 
   /** One short sine pip. Nodes are one-shot and released when they end. */

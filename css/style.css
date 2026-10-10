@@ -39,6 +39,8 @@
   --plate-trace: #8ea6ff;
   --plate-fill:  rgba(142, 166, 255, 0.2);
   --plate-peak:  rgba(142, 166, 255, 0.45);
+  --plate-chip:  rgba(12, 16, 22, 0.82);
+  --plate-chip-text: #e7ecf2;
 
   color-scheme: light;
 }
@@ -750,6 +752,100 @@ input[type="checkbox"] {
 @keyframes alarm-pulse { 50% { opacity: 0.4; } }
 .cell-trigger { width: 4.3rem; }
 
+/* ---------- Detect menu ---------- */
+
+/* The one menu with a list in it: wider, and scrolling inside itself rather
+   than running off the bottom of a tablet held in landscape. */
+.menu-panel-wide {
+  width: 23rem;
+  max-width: calc(100vw - 1.5rem);
+  max-height: calc(100vh - var(--bar-h) - 1rem);
+  overflow-y: auto;
+}
+
+.det-list { display: flex; flex-direction: column; }
+.det-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--rule);
+}
+.det-row:first-child { border-top: 0; }
+.det-row .check { font-weight: 600; min-height: 1.9rem; }
+.det-row.is-active .check span { color: var(--det-color, var(--accent)); }
+.det-row.is-off .det-tune { display: none; }
+/* Meter, threshold slider, its value, bell — only while the detector is on. */
+.det-tune {
+  display: grid;
+  grid-template-columns: 1fr 5.5rem 2.4rem auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+.det-tune .num { width: auto; }
+.det-swatch {
+  width: 0.6rem;
+  height: 0.6rem;
+  flex-shrink: 0;
+  background: var(--det-color, var(--accent));
+}
+
+/* Live score with the threshold marked on it: set the trigger by watching
+   the bar, the same way a marker's alarm level is set against its meter. */
+.det-meter {
+  position: relative;
+  height: 0.55rem;
+  background: var(--rule);
+  overflow: hidden;
+}
+.det-meter-fill {
+  height: 100%;
+  width: 0;
+  background: var(--det-color, var(--accent));
+  opacity: 0.55;
+  transition: width 80ms linear;
+}
+.det-row.is-active .det-meter-fill { opacity: 1; }
+.det-meter-mark {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink);
+}
+.det-tune input[type="range"] { width: 100%; }
+
+.model-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.55rem 0.65rem;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+.model-card-head { display: flex; align-items: baseline; gap: 0.5rem; }
+.model-card-name { font-weight: 700; font-size: 0.8125rem; }
+.model-card-meta { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--ink-3); }
+.model-state { font-size: 0.6875rem; font-weight: 600; color: var(--ink-2); }
+.model-state.is-ready { color: var(--accent); }
+.model-state.is-error { color: var(--flag); }
+
+/* ---------- Detections report ---------- */
+
+.report-detections { max-height: 30vh; }
+.report[hidden] { display: none; }
+.col-when { width: 7.5rem; white-space: nowrap; }
+.col-sound { min-width: 8rem; }
+.col-conf { width: 8rem; }
+.det-sound { display: flex; align-items: center; gap: 0.45rem; font-weight: 600; }
+.det-detail { font-weight: 400; color: var(--ink-3); }
+.det-clock { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.det-ago { color: var(--ink-3); font-size: 0.6875rem; }
+.det-open .det-sound { color: var(--det-color, var(--accent)); }
+.det-conf { display: flex; align-items: center; gap: 0.45rem; }
+.det-conf .det-meter { flex: 1; }
+.det-conf .det-meter-fill { opacity: 1; }
+
 .hint, .empty {
   margin: 0;
   font-size: 0.6875rem;
@@ -767,6 +863,7 @@ input[type="checkbox"] {
   /* The two widest, most decorative columns go first: the numbers they
      illustrate are still in the row. */
   .report-table .col-meter, .report-table .col-trend { display: none; }
+  .report-table .col-source { display: none; }
 }
 
 @media (max-width: 620px) {
@@ -794,6 +891,10 @@ input[type="checkbox"] {
   .cell-num { width: 100%; }
   .col-alarm { width: auto; }
   .cell-trigger { width: 4.3rem; }
+  /* A detection reads as when, what, how sure; the rest is in the CSV. */
+  .report-detections .report-table tr { grid-template-columns: 4.6rem 1fr 6rem; }
+  .report-detections .col-dur, .report-detections .col-hz { display: none; }
+  .col-when, .col-conf { width: auto; }
 }
 
 @media (prefers-color-scheme: dark) {

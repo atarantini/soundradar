@@ -30,6 +30,10 @@ export function readTheme() {
     selectionEdge: '#8ea6ff',
     outsideHearing: 'rgba(0, 0, 0, 0.45)',
 
+    // Detection labels sit on the waterfall, so they are plate colours.
+    detChip: cssVar('--plate-chip', 'rgba(12, 16, 22, 0.82)'),
+    detChipText: cssVar('--plate-chip-text', '#e7ecf2'),
+
     // Ruler lives on paper, so it uses the ink palette rather than the plate's.
     rulerText: cssVar('--ink-2', '#4c5867'),
     rulerTick: cssVar('--rule-2', '#a3adba'),
