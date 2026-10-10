@@ -78,7 +78,10 @@ desde un subdirectorio funciona.
   así el umbral se ajusta mirando, y el registro de detecciones se exporta
   como CSV — dejá una tablet en una habitación toda la noche y volvé a una
   lista de cuándo pasó. Una falsa alarma se borra con su ✕, o se vacía el
-  registro entero. Agregar un sonido nuevo es una entrada en el catálogo
+  registro entero. Activá *Keep a sound clip of each detection* y cada fila
+  guarda además los segundos alrededor de la detección, para volver a
+  escucharlos (▶) o descargarlos como WAV (⤓) — útil para comprobar qué
+  disparó realmente un detector. Agregar un sonido nuevo es una entrada en el catálogo
   (ver `CLAUDE.md`). Los choques son la categoría más débil: YAMNet tiende a
   oír la rotura de un vidrio chico como campanitas o pájaros.
 - **Sesiones** — estados guardados con nombre, cada uno con su propia
@@ -130,7 +133,13 @@ prefijos de proveedor. El permiso de micrófono se solicita al presionar
 
 No hay componente de servidor ni tráfico de red más allá de cargar la propia
 app. El audio se procesa en la página mediante la Web Audio API y nunca se
-graba, sube ni persiste. La detección de sonidos también es local: el modelo
+graba, sube ni persiste — con una excepción que hay que activar a
+propósito: con *Keep a sound clip of each detection*, unos segundos alrededor
+de cada detección quedan en la memoria de esta pestaña para escucharlos o
+descargarlos. Nunca se escriben en el almacenamiento ni se envían a ningún
+lado, y desaparecen al recargar, borrar la detección, vaciar el registro,
+cambiar de sesión o desactivar la opción. La detección de sonidos también es
+local: el modelo
 YAMNet y su runtime son archivos de este repositorio, que se descargan del
 mismo lugar que el resto de la app y corren en un worker dentro de tu
 pestaña — ni el audio, ni sus características, ni los resultados salen nunca

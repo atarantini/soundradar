@@ -99,9 +99,12 @@ export function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** `soundradar-2026-08-14-153012` — stable, sortable export filenames. */
-export function timestampSlug(prefix = 'soundradar') {
-  const d = new Date();
+/**
+ * `soundradar-2026-08-14-153012` — stable, sortable export filenames.
+ * @param {Date|number} [when] the moment to name, if not now
+ */
+export function timestampSlug(prefix = 'soundradar', when = Date.now()) {
+  const d = new Date(when);
   const p = (n) => String(n).padStart(2, '0');
   return `${prefix}-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }

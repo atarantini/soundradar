@@ -72,7 +72,10 @@ bucket. All paths are relative, so serving it from a subdirectory works.
   Each detector has a live confidence meter with its threshold marked on it,
   so you set the threshold by watching, and the detection log exports as CSV
   — leave a tablet in a room overnight and come back to a list of when the
-  thing happened. Remove a false alarm with its ✕, or clear the whole log. Adding a new sound is one catalog entry (see `CLAUDE.md`).
+  thing happened. Remove a false alarm with its ✕, or clear the whole log.
+  Turn on *Keep a sound clip of each detection* and every row also gets the
+  few seconds around it, to replay (▶) or download as WAV (⤓) — handy for
+  checking what actually set a detector off. Adding a new sound is one catalog entry (see `CLAUDE.md`).
   Crashes are the weakest category: YAMNet tends to hear a small glass break
   as chimes or birdsong.
 - **Sessions** — named save states, each with its own display settings and
@@ -122,7 +125,12 @@ and can be revoked at any time.
 
 There is no server component and no network traffic beyond loading the app
 itself. Audio is processed in the page via the Web Audio API and is never
-recorded, uploaded or persisted. Sound detection is local too: the YAMNet
+recorded, uploaded or persisted — with one opt-in exception: if you turn on
+*Keep a sound clip of each detection*, a few seconds around each detection are
+held in this tab's memory so you can replay or download them. They are never
+written to storage or sent anywhere, and they are gone when you reload, remove
+the detection, clear the log, switch sessions or turn the option off. Sound
+detection is local too: the YAMNet
 model and its runtime are files in this repository, fetched from the same
 place as the rest of the app, and they run in a worker in your tab — no
 audio, features or results ever leave the device. That is the point of doing

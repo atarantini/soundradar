@@ -11,6 +11,7 @@ import { AlarmTone } from './core/alarm.js';
 import { DETECTORS } from './core/detect/catalog.js';
 import { DetectionEngine, SPECTRUM_INPUT } from './core/detect/engine.js';
 import { DetectionLog } from './core/detect/log.js';
+import { ClipRecorder } from './core/detect/clips.js';
 import { YamnetClassifier } from './core/detect/yamnet.js';
 import { SpectrumView } from './core/spectrum.js';
 import { Waterfall } from './core/waterfall.js';
@@ -112,6 +113,8 @@ const engine = new AudioEngine();
 const markers = new MarkerStore({ storageKey: sessionKeys.markers, palette: PALETTE });
 const alarm = new AlarmTone({ getContext: () => engine.ctx });
 const detectLog = new DetectionLog();
+const clips = new ClipRecorder({ log: detectLog });
+const clipPlayer = new Audio();
 const detection = new DetectionEngine({ catalog: DETECTORS, log: detectLog, onEvent: onDetection });
 const classifier = new YamnetClassifier();
 const detectTap = new AnalyserTap(engine, SPECTRUM_INPUT);
@@ -169,6 +172,9 @@ const detectionsTable = new DetectionsTable({
   log: detectLog,
   colorOf: colorOfDetector,
   onRemove: (id) => detectLog.remove(id),
+  clips,
+  onPlay: playClip,
+  onDownload: downloadClip,
 });
 
 // ---------- layout ----------
@@ -261,6 +267,7 @@ function syncControls() {
   $('alarmVolume').value = String(s.alarmVolume);
   $('alarmVolumeVal').value = `${Math.round(s.alarmVolume * 100)}%`;
   $('alarmMuted').checked = s.alarmMuted;
+  $('detectClips').checked = s.detectClips;
   const muteBtn = $('alarmMuteToggle');
   muteBtn.classList.toggle('on', s.alarmMuted);
   muteBtn.setAttribute('aria-pressed', String(s.alarmMuted));
@@ -585,6 +592,10 @@ function syncDetection() {
   detection.configure(settings.v.detectors);
   if (detection.needsModel) classifier.enable(engine);
   else classifier.disable();
+  // Off means keep nothing; on with no detector running just stops listening.
+  if (!settings.v.detectClips) clips.disable();
+  else if (detection.slots.size) clips.enable(engine);
+  else clips.detach();
   detectMenu.sync(settings.v.detectors);
   syncDetectionsPanel();
 }
@@ -627,6 +638,44 @@ $('clearDetections').addEventListener('click', () => {
     detectLog.clear();
   }
 });
+$('detectClips').addEventListener('change', (e) => settings.set({ detectClips: e.target.checked }, ['detect']));
+
+// One shared player: starting a clip stops whichever was playing.
+function playClip(id) {
+  const clip = clips.get(id);
+  if (!clip) return;
+  if (detectionsTable.playingId === id && !clipPlayer.paused) {
+    stopClip();
+    return;
+  }
+  clipPlayer.src = clip.url;
+  // Over speakers the microphone hears the replay; it must not be logged as a
+  // fresh detection. YAMNet scores arrive a window late, hence the margin.
+  detection.quietUntil = performance.now() + clip.ms + 1500;
+  clipPlayer.play().catch(() => stopClip());
+  detectionsTable.setPlaying(id);
+}
+
+function stopClip() {
+  if (!clipPlayer.paused) clipPlayer.pause();
+  if (detectionsTable.playingId !== null) detection.quietUntil = performance.now() + 1500;
+  detectionsTable.setPlaying(null);
+}
+
+clipPlayer.addEventListener('ended', stopClip);
+// A clip that is dropped (row removed, log cleared, option off) stops playing.
+clips.subscribe((id) => {
+  if (id === detectionsTable.playingId && !clips.get(id)) stopClip();
+});
+
+function downloadClip(id) {
+  const clip = clips.get(id);
+  const entry = detectLog.entries.find((e) => e.id === id);
+  if (!clip || !entry) return;
+  const name = entry.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  downloadBlob(clip.blob, `${timestampSlug(`soundradar-${name}`, entry.wallStart)}.wav`);
+}
+
 $('exportDetections').addEventListener('click', () => {
   if (!detectLog.entries.length) return;
   downloadBlob(new Blob([detectLog.toCsv()], { type: 'text/csv' }), `${timestampSlug('soundradar-detections')}.csv`);
@@ -667,6 +716,8 @@ function paintState() {
   }
   syncControls();
   detectMenu.setModel(classifier, state === 'live');
+  // No more audio is coming: cut pending clips from what has arrived.
+  if (state !== 'live') clips.flush();
   // Pausing suspends the context: one more frame lets the alarms notice and the
   // report drop their "sounding" flags.
   needsIdleDraw = true;
@@ -687,6 +738,7 @@ async function startCapture() {
     // The context exists now, so the classifier can tap it. Later restarts
     // (a device switch) keep the tap: the engine re-connects it.
     if (detection.needsModel) classifier.enable(engine);
+    if (settings.v.detectClips && detection.slots.size) clips.enable(engine);
     $('statusDevice').textContent = info.label || 'System default input';
     await refreshDevices();
   } catch {

@@ -51,6 +51,13 @@ record lives once, in `DetectionEngine`:
   `refractoryMs`. One bark is one row.
 - **Log** — `{ t0, t1, label, detail, source, confidence (peak), freq }`,
   newest first, in memory, CSV export. Not part of a session's saved state.
+  Single records can be removed (a false alarm) and the log cleared.
+- **Clips (opt-in)** — with *Keep a sound clip of each detection* on, each
+  record also keeps the audio around it (2 s before → 1 s after, ≤ 12 s) as
+  a WAV to replay or download. Memory-only, never stored or uploaded, and
+  dropped with the record — the one place the app holds sound, so it is off
+  by default and says so where it is switched on. A replay heard by the
+  microphone is not logged as a new detection.
 - **Alarm** — a detector's bell plays a one-shot chime on the shared context;
   mute and "Disable all alarms" apply unchanged, as this spec required.
 - **Configuration** — `settings.detectors`, `{ [id]: { on, alarm,

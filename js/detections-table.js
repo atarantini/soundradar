@@ -20,15 +20,23 @@ export class DetectionsTable {
    * @param {import('./core/detect/log.js').DetectionLog} o.log
    * @param {(id:string)=>string} o.colorOf
    * @param {(entryId:number)=>void} o.onRemove  the user asked to drop a row
+   * @param {import('./core/detect/clips.js').ClipRecorder} [o.clips]
+   * @param {(entryId:number)=>void} [o.onPlay]      play / stop a row's clip
+   * @param {(entryId:number)=>void} [o.onDownload]  save a row's clip
    */
-  constructor({ bodyEl, emptyEl, countEl, log, colorOf, onRemove }) {
+  constructor({ bodyEl, emptyEl, countEl, log, colorOf, onRemove, clips, onPlay, onDownload }) {
     this.bodyEl = bodyEl;
     this.emptyEl = emptyEl;
     this.countEl = countEl;
     this.log = log;
     this.colorOf = colorOf;
     this.onRemove = onRemove;
+    this.clips = clips;
+    this.onPlay = onPlay;
+    this.onDownload = onDownload;
+    this.playingId = null;
     this.rows = new Map(); // entry id → row refs
+    clips?.subscribe((id) => this._clipState(this.rows.get(id)));
     log.subscribe((kind, entry) => {
       if (kind === 'add') this._add(entry);
       else if (kind === 'close') this._refresh(this.rows.get(entry.id), performance.now());
@@ -97,19 +105,28 @@ export class DetectionsTable {
     source.textContent = SOURCE_LABELS[entry.source] || entry.source;
 
     const actions = cell('row-actions col-actions');
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'icon-cell danger';
-    remove.textContent = '✕';
     const what = `${entry.label} at ${clock.textContent}`;
-    remove.title = `Remove this detection (${what})`;
-    remove.setAttribute('aria-label', remove.title);
+    // The clip controls exist on every row and show only once there is a clip:
+    // a dot while it is still being captured, then play and save.
+    const rec = document.createElement('span');
+    rec.className = 'clip-rec';
+    rec.title = 'Recording the clip…';
+    rec.hidden = true;
+    const play = iconButton('▶', `Play the clip of ${what}`);
+    play.classList.add('clip-play');
+    play.hidden = true;
+    play.addEventListener('click', () => this.onPlay?.(entry.id));
+    const save = iconButton('⤓', `Download the clip of ${what} (WAV)`);
+    save.hidden = true;
+    save.addEventListener('click', () => this.onDownload?.(entry.id));
+    const remove = iconButton('✕', `Remove this detection (${what})`);
+    remove.classList.add('danger', 'row-remove');
     remove.addEventListener('click', () => this.onRemove?.(entry.id));
-    actions.append(remove);
+    actions.append(rec, play, save, remove);
 
     tr.append(when, sound, conf, dur, hz, source, actions);
     this.bodyEl.prepend(tr);
-    const row = { entry, tr, ago, detail, fill, confText, dur, hz, last: {} };
+    const row = { entry, tr, ago, detail, fill, confText, dur, hz, rec, play, save, what, last: {} };
     this.rows.set(entry.id, row);
 
     // Trim from the bottom: the oldest rows go first.
@@ -119,7 +136,31 @@ export class DetectionsTable {
       oldest.remove();
     }
     this._refresh(row, performance.now());
+    this._clipState(row);
     this._counts();
+  }
+
+  /** Show the clip controls a row's clip state calls for. */
+  _clipState(row) {
+    if (!row) return;
+    const state = this.clips?.state(row.entry.id) ?? null;
+    row.rec.hidden = state !== 'recording';
+    row.play.hidden = state !== 'ready';
+    row.save.hidden = state !== 'ready';
+    const playing = state === 'ready' && this.playingId === row.entry.id;
+    row.play.textContent = playing ? '■' : '▶';
+    row.play.classList.toggle('on', playing);
+    const label = `${playing ? 'Stop' : 'Play'} the clip of ${row.what}`;
+    row.play.title = label;
+    row.play.setAttribute('aria-label', label);
+  }
+
+  /** Which row's clip is playing, or null. */
+  setPlaying(id) {
+    const before = this.playingId;
+    this.playingId = id;
+    this._clipState(this.rows.get(before));
+    this._clipState(this.rows.get(id));
   }
 
   _remove(entry) {
@@ -135,7 +176,7 @@ export class DetectionsTable {
     const neighbour = row.tr.nextElementSibling || row.tr.previousElementSibling;
     row.tr.remove();
     this.rows.delete(entry.id);
-    if (hadFocus) neighbour?.querySelector('.col-actions button')?.focus();
+    if (hadFocus) neighbour?.querySelector('.row-remove')?.focus();
     this._counts();
   }
 
@@ -166,6 +207,16 @@ function put(row, key, value, write) {
   if (row.last[key] === value) return;
   row.last[key] = value;
   write(value);
+}
+
+function iconButton(glyph, label) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'icon-cell';
+  b.textContent = glyph;
+  b.title = label;
+  b.setAttribute('aria-label', label);
+  return b;
 }
 
 function cell(className) {

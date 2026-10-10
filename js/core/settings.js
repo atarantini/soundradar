@@ -29,6 +29,9 @@ export const BASE_DEFAULTS = {
   // Sound detectors, by catalog id: `{ on, alarm, threshold? }`. Only what the
   // user has touched is stored; a missing threshold means the catalog default.
   detectors: {},
+  // Keep a short audio clip of each detection, in memory only. Off by default:
+  // it is the one feature that holds on to sound.
+  detectClips: false,
 };
 
 export const WATERFALL_SPANS = [5, 10, 20, 30, 60, 120];
@@ -88,6 +91,7 @@ export function normalize(s, nyquist = 24000) {
   s.showHearingBand = Boolean(s.showHearingBand);
   s.alarmMuted = Boolean(s.alarmMuted);
   s.detectors = normalizeDetectors(s.detectors);
+  s.detectClips = Boolean(s.detectClips);
   return s;
 }
 

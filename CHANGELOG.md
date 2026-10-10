@@ -32,6 +32,13 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     Remove a single detection — a false alarm, a test — with its ✕, or every
     one with *Clear* (which asks first). Either takes the label off the
     waterfall too.
+  - **Sound clips**, opt-in (*Keep a sound clip of each detection*, off by
+    default): each detection keeps from 2 s before it started to 1 s after
+    it ended (at most 12 s), to replay ▶ or download ⤓ as WAV from its row.
+    Clips live only in the tab's memory — at most 50 / 64 MB, oldest dropped
+    first — and go with their row, a cleared log, a session switch, a reload,
+    or the option being turned off. Replaying over speakers is not logged as
+    a new detection.
   - Which detectors are on, their thresholds and bells are part of a
     session's settings — they switch with the session and travel in the JSON
     export.

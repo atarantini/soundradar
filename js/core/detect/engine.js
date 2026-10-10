@@ -35,6 +35,9 @@ export class DetectionEngine {
     this.active = new Set(); // ids with an event open right now
     this.needsModel = false;
     this.needsSpectrum = false;
+    // Until this time (performance.now ms) nothing new is logged: a clip being
+    // replayed over speakers reaches the microphone and is not a new event.
+    this.quietUntil = -Infinity;
   }
 
   /**
@@ -124,7 +127,10 @@ export class DetectionEngine {
     this.scores.set(def.id, score);
 
     const event = trigger.step(score, t);
-    if (event === 'start') {
+    if (event === 'start' && performance.now() < this.quietUntil) {
+      // Let the trigger run its course for this sound, but log nothing.
+      slot.entry = null;
+    } else if (event === 'start') {
       slot.entry = this.log.open({
         detectorId: def.id,
         label: def.label,
