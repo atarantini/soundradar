@@ -78,6 +78,13 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Detection after Clear.** Clearing the log while a sound was still going
+  on — traffic, talking, a long siren — left that sound's event running out
+  of sight, and nothing new was logged until the sound stopped for a moment.
+  A continuous sound could go unlogged indefinitely. Now a sound still going
+  on when you clear starts a fresh record right away (without a chime: it is
+  the same sound). Removing a single detection with ✕ still dismisses it for
+  as long as that sound lasts.
 - **Toolbar menus on phones.** Below 620px the menus scroll in a row of their
   own, and that row clipped every drop-down to its own height: menus opened,
   but nothing in them could be reached, and a tap on one closed it. On a

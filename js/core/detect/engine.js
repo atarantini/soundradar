@@ -30,7 +30,7 @@ export class DetectionEngine {
     this.catalog = catalog;
     this.log = log;
     this.onEvent = onEvent;
-    this.slots = new Map(); // id → { def, trigger, instance, entry, t }
+    this.slots = new Map(); // id → { def, trigger, instance, entry, reopen, t }
     this.scores = new Map(); // id → latest score, for live meters
     this.active = new Set(); // ids with an event open right now
     this.needsModel = false;
@@ -38,6 +38,25 @@ export class DetectionEngine {
     // Until this time (performance.now ms) nothing new is logged: a clip being
     // replayed over speakers reaches the microphone and is not a new event.
     this.quietUntil = -Infinity;
+    log.subscribe((kind) => {
+      if (kind === 'clear') this._cleared();
+    });
+  }
+
+  /**
+   * The log was cleared — "start the list over", not "stop listening". A
+   * sound still going on would otherwise keep updating a record nobody can
+   * see, and nothing new would appear until it stopped. Instead it starts a
+   * fresh record on its next score. The trigger and the rules' history are
+   * kept, so nothing has to re-learn the sound. (Removing one record with ✕
+   * is different: that dismisses the event for as long as it lasts.)
+   */
+  _cleared() {
+    for (const slot of this.slots.values()) {
+      if (!slot.entry) continue;
+      slot.entry = null;
+      slot.reopen = true;
+    }
   }
 
   /**
@@ -115,6 +134,7 @@ export class DetectionEngine {
       slot.trigger.reset();
       slot.instance?.reset();
       slot.entry = null;
+      slot.reopen = false;
     }
     this.scores.clear();
     this.active.clear();
@@ -131,19 +151,14 @@ export class DetectionEngine {
       // Let the trigger run its course for this sound, but log nothing.
       slot.entry = null;
     } else if (event === 'start') {
-      slot.entry = this.log.open({
-        detectorId: def.id,
-        label: def.label,
-        source: def.source,
-        // The event began when the score first rose, not when `minMs` ran out.
-        t: Number.isFinite(trigger.aboveSince) ? trigger.aboveSince : t,
-        confidence: score,
-        freq: result?.freq,
-        detail: result?.detail,
-      });
-      slot.entry.t1 = t;
-      this.active.add(def.id);
+      // The event began when the score first rose, not when `minMs` ran out.
+      this._open(slot, result, score, Number.isFinite(trigger.aboveSince) ? trigger.aboveSince : t, t);
       this.onEvent?.('start', slot.entry, def);
+    } else if (event === 'update' && slot.reopen) {
+      // Still going after a Clear: a fresh record from now, without a chime —
+      // it is the same sound, not a new one.
+      slot.reopen = false;
+      this._open(slot, result, score, t, t);
     } else if (event === 'update' && slot.entry) {
       const e = slot.entry;
       if (score >= trigger.releaseLevel) e.t1 = t;
@@ -158,6 +173,20 @@ export class DetectionEngine {
     }
   }
 
+  _open(slot, result, score, t0, t) {
+    slot.entry = this.log.open({
+      detectorId: slot.def.id,
+      label: slot.def.label,
+      source: slot.def.source,
+      t: t0,
+      confidence: score,
+      freq: result?.freq,
+      detail: result?.detail,
+    });
+    slot.entry.t1 = t;
+    this.active.add(slot.def.id);
+  }
+
   _finish(slot, t) {
     if (slot.trigger.end(t) === 'end') this._close(slot);
   }
@@ -165,6 +194,7 @@ export class DetectionEngine {
   _close(slot) {
     const entry = slot.entry;
     slot.entry = null;
+    slot.reopen = false;
     this.active.delete(slot.def.id);
     if (!entry) return;
     this.log.close(entry);
