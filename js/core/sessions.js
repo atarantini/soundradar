@@ -1,9 +1,11 @@
-// Sessions: named save states, each with its own settings and markers.
+// Sessions: named save states, each with its own settings, markers and
+// learned sounds.
 //
 // A session is not a copy of the live state — it *is* the storage the live
-// state reads and writes. Every session owns two localStorage records
-// (`<prefix><id>.settings.v1` and `<prefix><id>.markers.v1`), and switching a
-// session just re-points `Settings` and `MarkerStore` at the other pair. That
+// state reads and writes. Every session owns three localStorage records
+// (`<prefix><id>.settings.v1`, `<prefix><id>.markers.v1` and
+// `<prefix><id>.sounds.v1`), and switching a session just re-points
+// `Settings`, `MarkerStore` and `SoundStore` at the other set. That
 // keeps one code path for persistence: there is no "unsaved session" state to
 // reconcile, because saving a setting already writes into the active session.
 //
@@ -120,9 +122,13 @@ export class SessionStore {
     return this.get(this.activeId) || this.sessions[0];
   }
 
-  /** The two storage keys a session's live state reads and writes. */
+  /** The storage keys a session's live state reads and writes. */
   keysFor(id) {
-    return { settings: `${this.prefix}${id}.settings.v1`, markers: `${this.prefix}${id}.markers.v1` };
+    return {
+      settings: `${this.prefix}${id}.settings.v1`,
+      markers: `${this.prefix}${id}.markers.v1`,
+      sounds: `${this.prefix}${id}.sounds.v1`,
+    };
   }
 
   /** A name no other session is using, so the picker stays unambiguous. */
@@ -153,7 +159,7 @@ export class SessionStore {
     const copy = { id: newId(), name: this.uniqueName(name || `${from.name} copy`), createdAt: nowIso(), updatedAt: nowIso() };
     const src = this.keysFor(id);
     const dst = this.keysFor(copy.id);
-    for (const which of ['settings', 'markers']) {
+    for (const which of ['settings', 'markers', 'sounds']) {
       try {
         const raw = localStorage.getItem(src[which]);
         if (raw != null) localStorage.setItem(dst[which], raw);
@@ -187,6 +193,7 @@ export class SessionStore {
     try {
       localStorage.removeItem(keys.settings);
       localStorage.removeItem(keys.markers);
+      localStorage.removeItem(keys.sounds);
     } catch {
       /* storage unavailable */
     }
@@ -234,6 +241,7 @@ export class SessionStore {
       ...s,
       settings: this._readJson(keys.settings, null),
       markers: this._readJson(keys.markers, []),
+      sounds: this._readJson(keys.sounds, []),
     };
   }
 
@@ -278,6 +286,10 @@ export class SessionStore {
         }
         if (Array.isArray(entry.markers)) {
           localStorage.setItem(keys.markers, JSON.stringify(entry.markers));
+        }
+        // Validated by SoundStore when the session is opened, as markers are.
+        if (Array.isArray(entry.sounds) && entry.sounds.length) {
+          localStorage.setItem(keys.sounds, JSON.stringify(entry.sounds));
         }
       } catch {
         throw new Error('There is no room left in this browser’s storage for the import.');

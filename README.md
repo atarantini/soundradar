@@ -88,6 +88,14 @@ bucket. All paths are relative, so serving it from a subdirectory works.
   checking what actually set a detector off. Adding a new sound is one catalog entry (see `CLAUDE.md`).
   Crashes are the weakest category: YAMNet tends to hear a small glass break
   as chimes or birdsong.
+- **Teach it your own sound** — *Teach a sound…* in the Detect menu records a
+  sound of yours (the heat pump, the gate, your dog) while it is happening,
+  and from then on it is detected, logged, labelled and chimed like any other.
+  Record it a few times for a sturdier match. Nothing is trained: it keeps
+  YAMNet's summary of each second you recorded and listens for something
+  close to one of them, so it learns in an instant and finds *that* sound
+  again much better than it recognises everything of its kind. What is kept
+  is that numeric summary, never the audio, and it belongs to the session.
 - **Sessions** — named save states, each with its own display settings and
   markers, switched from the Session menu. One survey per room, per machine,
   per site visit. The app always opens in the session you were last in, and
@@ -147,8 +155,9 @@ audio, features or results ever leave the device. That is the point of doing
 it this way; every comparable app answers "what was that sound?" by sending
 your microphone to a server.
 
-The only things stored are your sessions — display settings, markers and which
-detectors are on — plus your theme, in this browser's `localStorage` (keys
+The only things stored are your sessions — display settings, markers, which
+detectors are on, and the sounds you taught (YAMNet's numeric summary of each
+recorded second, which cannot be played back) — plus your theme, in this browser's `localStorage` (keys
 prefixed `soundradar.`). Exporting writes a file to your own disk; nothing is
 sent anywhere.
 
@@ -161,13 +170,15 @@ js/app.js             composition root: settings, wiring, render loop
 js/core/              reusable, DOM-free analysis and rendering modules
 js/core/sessions.js   named save states, and JSON export/import of all of them
 js/core/alarm.js      the marker alarm tone and the detection chime
-js/core/detect/       sound detection: catalog, engine, rules, YAMNet worker
+js/core/detect/       sound detection: catalog, engine, rules, YAMNet worker, learned sounds
 js/core/capture.js    raw-audio tap (AudioWorklet) for the classifier
 js/vendor/            TensorFlow.js, vendored as a single ES module
 models/yamnet/        the YAMNet model weights and class map
+tools/                a Node script that regenerates a generated data file
 js/ruler.js           the shared frequency ruler between the plates
 js/markers-table.js   the marker report table
 js/detect-menu.js     the Detect menu: detector toggles, meters, thresholds
+js/teach-card.js      teaching a sound of your own: record, name, edit
 js/detections-table.js the detection log
 js/theme.js           reads canvas colours out of the stylesheet
 CHANGELOG.md          what changed in each release

@@ -28,6 +28,26 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Teach it your own sound** — *Teach a sound…* in the Detect menu records a
+  sound of yours while it is happening: the heat pump, the gate, your dog.
+  From then on it is listed under **My sounds** and detected, logged,
+  labelled on the waterfall, clipped and chimed like any built-in sound, with
+  its own switch, meter, threshold and bell. Record it a few times, in
+  different conditions, for a sturdier match; *Edit* adds or removes examples,
+  renames or deletes it.
+  - Nothing is trained. It keeps YAMNet's 1024-number summary of each second
+    recorded and detects whatever comes close to one of them, so it learns
+    in an instant. It finds *that* sound again far better than it recognises
+    everything of its kind: taught from part of a recording it found the rest
+    in 18 of 19 test recordings.
+  - What is kept is that summary, never audio, and it cannot be played back.
+    Learned sounds belong to the session: they are copied with it, exported
+    and imported with it, and deleted with it. Up to 24 per session, about
+    40 s of examples each.
+  - Matching runs in the classifier's worker, alongside the built-in
+    categories, and the model loads as soon as the teach card opens so the
+    first seconds of the sound are not lost.
+
 - **Resizable plots and reports** — drag the bar between the plots and the
   markers / detections reports to give either more room (touch works too;
   arrow keys when it has focus). Double-click it to go back to the automatic

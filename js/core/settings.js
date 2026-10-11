@@ -50,7 +50,7 @@ export const MIN_SPAN_HZ = 4;
 export const ABSOLUTE_MAX_HZ = 96000;
 
 const DETECTOR_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
-const MAX_DETECTORS = 64;
+const MAX_DETECTORS = 96; // the built-in catalog plus up to 24 learned sounds
 
 /**
  * A clean detector map. Ids are not checked against the catalog, so a session

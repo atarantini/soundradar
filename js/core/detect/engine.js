@@ -9,6 +9,8 @@
 // Two inputs, matching a detector's `source`:
 //   'spectrum' — an analyser frame, once per animation frame
 //   'yamnet'   — a 521-class score vector, up to four times a second
+//   'learned'  — the same YAMNet window, as its similarity to a sound the
+//                user taught (matched in the worker; see learned.js)
 
 import { Trigger } from './trigger.js';
 
@@ -60,6 +62,19 @@ export class DetectionEngine {
   }
 
   /**
+   * Swap in a new catalog — the user taught, renamed or deleted a sound. Call
+   * `configure()` after it: that is what starts and stops detectors.
+   */
+  setCatalog(catalog) {
+    this.catalog = catalog;
+    // A renamed sound keeps its slot and its trigger, under its new label.
+    for (const def of catalog) {
+      const slot = this.slots.get(def.id);
+      if (slot) slot.def = def;
+    }
+  }
+
+  /**
    * Match the running set to a `settings.detectors` map. Detectors keep their
    * state across a threshold change; switching one off closes its event.
    * @param {object} config  `settings.detectors`
@@ -92,7 +107,7 @@ export class DetectionEngine {
       this.scores.delete(id);
     }
     const sources = new Set([...this.slots.values()].map((s) => s.def.source));
-    this.needsModel = sources.has('yamnet');
+    this.needsModel = sources.has('yamnet') || sources.has('learned');
     this.needsSpectrum = sources.has('spectrum');
   }
 
@@ -114,11 +129,15 @@ export class DetectionEngine {
     }
   }
 
-  /** One YAMNet score vector, stamped at the centre of its window. */
-  updateScores(scores, t) {
+  /**
+   * One YAMNet window, stamped at its centre: `{ scores, learned }`, where
+   * `learned` maps a taught sound's id to its similarity (null when silent).
+   */
+  updateModel(frame, t) {
     for (const slot of this.slots.values()) {
-      if (slot.def.source !== 'yamnet') continue;
-      this._step(slot, slot.def.score(scores), t);
+      const { source } = slot.def;
+      if (source === 'yamnet') this._step(slot, slot.def.score(frame.scores), t);
+      else if (source === 'learned') this._step(slot, slot.def.score(frame), t);
     }
   }
 

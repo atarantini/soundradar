@@ -8,7 +8,10 @@ import { Settings, WATERFALL_SPANS, MIN_SPAN_HZ } from './core/settings.js';
 import { MarkerStore } from './core/markers.js';
 import { SessionStore, DEFAULT_SESSION_ID } from './core/sessions.js';
 import { AlarmTone } from './core/alarm.js';
-import { DETECTORS } from './core/detect/catalog.js';
+import { DETECTORS, withLearned } from './core/detect/catalog.js';
+import { learnedDetector, bankOf } from './core/detect/learned.js';
+import { SoundStore } from './core/detect/sounds.js';
+import { TeachSession } from './core/detect/teach.js';
 import { resolveThreshold, groupOf } from './core/detect/thresholds.js';
 import { DetectionEngine, SPECTRUM_INPUT } from './core/detect/engine.js';
 import { DetectionLog } from './core/detect/log.js';
@@ -33,6 +36,7 @@ import { Ruler } from './ruler.js';
 import { MarkersTable } from './markers-table.js';
 import { DetectMenu } from './detect-menu.js';
 import { DetectionsTable } from './detections-table.js';
+import { TeachCard } from './teach-card.js';
 
 const GUTTER_L = 44; // CSS px reserved for the dB / time axis on each plate
 const THEME_KEY = 'soundradar.theme';
@@ -114,14 +118,28 @@ const settings = new Settings(sessionKeys.settings, { colorMap: 'viridis', freqS
 const engine = new AudioEngine();
 const markers = new MarkerStore({ storageKey: sessionKeys.markers, palette: PALETTE });
 const alarm = new AlarmTone({ getContext: () => engine.ctx });
+// The sounds the user taught, per session. They join the catalog at runtime:
+// `catalog` is always the built-in detectors with the learned ones in front.
+const sounds = new SoundStore({ storageKey: sessionKeys.sounds });
+const teach = new TeachSession();
+let catalog = withLearned(sounds.sounds.map(learnedDetector));
 const detectLog = new DetectionLog();
 const clips = new ClipRecorder({ log: detectLog });
 const clipPlayer = new Audio();
-const detection = new DetectionEngine({ catalog: DETECTORS, log: detectLog, onEvent: onDetection });
+const detection = new DetectionEngine({ catalog, log: detectLog, onEvent: onDetection });
 const classifier = new YamnetClassifier();
 const detectTap = new AnalyserTap(engine, SPECTRUM_INPUT);
 const detectorColors = new Map(DETECTORS.map((d, i) => [d.id, DETECT_PALETTE[i % DETECT_PALETTE.length]]));
-const colorOfDetector = (id) => detectorColors.get(id) || DETECT_PALETTE[0];
+// A learned sound's colour follows its place in the list, so it keeps it
+// across reloads. Its own sequence skips the palette's grey, which reads as
+// "switched off", and steps far enough that neighbours never look alike.
+const LEARNED_COLORS = DETECT_PALETTE.filter((c) => c !== '#9aa7b8');
+const colorOfDetector = (id) => {
+  const builtIn = detectorColors.get(id);
+  if (builtIn) return builtIn;
+  const i = sounds.sounds.findIndex((s) => s.id === id);
+  return i < 0 ? DETECT_PALETTE[0] : LEARNED_COLORS[(4 + i * 4) % LEARNED_COLORS.length];
+};
 
 const spectrumCanvas = $('spectrumCanvas');
 const spectrumOverlay = $('spectrumOverlay');
@@ -163,12 +181,34 @@ const detectMenu = new DetectMenu({
   stateEl: $('modelState'),
   catalog: DETECTORS,
   colorOf: colorOfDetector,
+  onTeach: () => {
+    teachCard.openNew();
+    $('menuDetect').open = true;
+  },
+  onEdit: (id) => teachCard.openEdit(id),
   onChange: setDetector,
   onChangeMany: setDetectors,
   onCollapse: (names) => settings.set({ detectCollapsed: names }, []),
   globalEl: $('detectGlobal'),
   onGlobalThreshold: setGlobalThreshold,
   onGroupThreshold: setGroupThreshold,
+});
+
+const teachCard = new TeachCard({
+  slot: detectMenu.teachSlot,
+  store: sounds,
+  teach,
+  status: () => ({ live: engine.running && !engine.paused, model: classifier.state }),
+  onStartCapture: () => $('runBtn').click(),
+  onStateChange: () => {
+    $('menuDetect').classList.toggle('is-recording', teachCard.recording);
+    syncClassifier();
+  },
+  // A sound starts on, so a test straight after teaching shows whether it works.
+  onSaved: (sound, isNew) => {
+    if (isNew) setDetector(sound.id, { on: true });
+  },
+  onDelete: deleteSound,
 });
 
 const detectionsTable = new DetectionsTable({
@@ -439,6 +479,8 @@ function activateSession(id) {
   if (!sessions.has(id)) return;
   sessions.setActive(id);
   const keys = sessions.keysFor(id);
+  teachCard.close(); // an unsaved recording belongs to the session it was made in
+  sounds.useStorage(keys.sounds); // first, so the settings sync sees this session's catalog
   settings.useStorage(keys.settings); // notifies 'all' → controls, engine, plots
   markers.useStorage(keys.markers);
   alarm.reset();
@@ -470,6 +512,7 @@ function renderSessions() {
 const touchSession = debounce(() => sessions.touch(), 600);
 settings.subscribe(() => touchSession());
 markers.subscribe(() => touchSession());
+sounds.subscribe(() => touchSession());
 
 $('sessionSelect').addEventListener('change', (e) => activateSession(e.target.value));
 
@@ -498,7 +541,7 @@ $('sessionRename').addEventListener('click', () => {
 $('sessionDelete').addEventListener('click', () => {
   const current = sessions.active();
   if (sessions.list().length <= 1) return;
-  if (!confirm(`Delete the session “${current.name}” with its settings and markers? This cannot be undone.`)) return;
+  if (!confirm(`Delete the session “${current.name}” with its settings, markers and learned sounds? This cannot be undone.`)) return;
   sessions.remove(current.id);
   activateSession(sessions.activeId); // remove() already moved us to a survivor
   renderSessions();
@@ -660,7 +703,7 @@ function setGlobalThreshold(t) {
 }
 
 function setGroupThreshold(group, t) {
-  const ids = new Set(DETECTORS.filter((d) => groupOf(d) === group).map((d) => d.id));
+  const ids = new Set(catalog.filter((d) => groupOf(d) === group).map((d) => d.id));
   settings.set(
     {
       detectGroupThresholds: { ...settings.v.detectGroupThresholds, [group]: t },
@@ -686,12 +729,12 @@ function disableDetectorAlarms() {
 
 /**
  * Bring the running detectors in line with settings. The classifier is only
- * loaded while a YAMNet category is on, and dropped again when none is.
+ * loaded while a YAMNet category or a learned sound is on, or the teach card
+ * is open, and dropped again when none is.
  */
 function syncDetection() {
   detection.configure(settings.v.detectors, (def) => resolveThreshold(def, settings.v));
-  if (detection.needsModel) classifier.enable(engine);
-  else classifier.disable();
+  syncClassifier();
   // Off means keep nothing; on with no detector running just stops listening.
   if (!settings.v.detectClips) clips.disable();
   else if (detection.slots.size) clips.enable(engine);
@@ -708,6 +751,38 @@ function syncDetectionsPanel() {
   if ($('detections').hidden === show) $('detections').hidden = !show;
 }
 
+// An open teach card loads the model too, so it is ready by the time Record is
+// pressed rather than swallowing the first seconds of the sound.
+function syncClassifier() {
+  if (detection.needsModel || teachCard.isOpen) classifier.enable(engine);
+  else classifier.disable();
+}
+
+/**
+ * The learned sounds changed (taught, renamed, given or stripped of examples,
+ * deleted, or another session's): rebuild the catalog, the menu's My sounds
+ * rows and the worker's bank, then let the settings decide what runs.
+ */
+function rebuildCatalog() {
+  const learned = sounds.sounds.map(learnedDetector);
+  catalog = withLearned(learned);
+  detection.setCatalog(catalog);
+  detectMenu.setLearned(learned);
+  classifier.setBank(bankOf(sounds.sounds, (s) => sounds.vectorsOf(s)));
+  syncDetection();
+  teachCard.refresh();
+}
+sounds.subscribe(rebuildCatalog);
+
+/** Forget a learned sound and its switch, bell and threshold. */
+function deleteSound(id) {
+  sounds.remove(id);
+  if (!(id in settings.v.detectors)) return;
+  const next = { ...settings.v.detectors };
+  delete next[id];
+  settings.set({ detectors: next }, ['detect']);
+}
+
 function onDetection(kind, entry, def) {
   if (kind === 'start') {
     const s = settings.v;
@@ -717,12 +792,20 @@ function onDetection(kind, entry, def) {
   needsIdleDraw = true;
 }
 
-classifier.onscores = (scores, t) => {
+classifier.onwindow = (frame, t, silent) => {
   // A window can land just after a pause; it describes audio the user has
   // already stopped looking at.
-  if (engine.running && !engine.paused) detection.updateScores(scores, t);
+  if (!engine.running || engine.paused) return;
+  teach.push(frame.embedding, t, silent);
+  // A sound being given another example must not log itself while it is.
+  const taught = teachCard.recording ? teachCard.soundId : null;
+  if (taught && frame.learned) frame = { ...frame, learned: { ...frame.learned, [taught]: 0 } };
+  detection.updateModel(frame, t);
 };
-classifier.onstate = () => detectMenu.setModel(classifier, engine.running && !engine.paused);
+classifier.onstate = () => {
+  detectMenu.setModel(classifier, engine.running && !engine.paused);
+  teachCard.refresh();
+};
 
 // Removing records changes what the waterfall labels, and an empty log with
 // nothing switched on no longer needs its panel.
@@ -817,6 +900,7 @@ function paintState() {
   }
   syncControls();
   detectMenu.setModel(classifier, state === 'live');
+  teachCard.refresh();
   // No more audio is coming: cut pending clips from what has arrived.
   if (state !== 'live') clips.flush();
   // Pausing suspends the context: one more frame lets the alarms notice and the
@@ -838,7 +922,7 @@ async function startCapture() {
     spectrum.resetPeaks();
     // The context exists now, so the classifier can tap it. Later restarts
     // (a device switch) keep the tap: the engine re-connects it.
-    if (detection.needsModel) classifier.enable(engine);
+    syncClassifier();
     if (settings.v.detectClips && detection.slots.size) clips.enable(engine);
     $('statusDevice').textContent = info.label || 'System default input';
     await refreshDevices();
@@ -1213,6 +1297,7 @@ function updateReadout(now, force) {
   table.update(settings.v, alarm.active);
   if ($('menuDetect').open) {
     detectMenu.update(detection);
+    if (teachCard.recording) teachCard.refresh(); // the clock, even before any window arrives
     detectMenu.setModel(classifier, engine.running && !engine.paused);
   }
   if (!$('detections').hidden) detectionsTable.update();
@@ -1349,7 +1434,7 @@ if (!support.ok) engine.error = support.reason;
 
 settings.setNyquist(24000);
 renderSessions();
-syncDetection();
+rebuildCatalog(); // → syncDetection()
 layout();
 syncControls();
 paintState();

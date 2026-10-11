@@ -7,28 +7,35 @@
 //   description  one line for the menu
 //   source       'spectrum' — scored from the analyser frame, every frame
 //                'yamnet'   — scored from the YAMNet model's 521 classes
+//                'learned'  — a sound the user taught, scored by its
+//                             similarity to their examples (learned.js)
 //   threshold    default score (0–1) that fires an event; the user can move it
 //   group        category in GROUPS: its menu heading, and its on/off switch
 //   minMs, releaseMs, refractoryMs   event timing, see trigger.js
 //   create()     ('spectrum') → { update(frame) → { score, freq?, detail? }, reset() }
 //   score(v)     ('yamnet')   → { score, detail? }
+//   score(frame) ('learned')  → { score }
 //
 // Adding a sound is adding an entry: a rule module under rules/ for something
 // with a recognisable spectral shape, or a `yamnetCategory` for anything the
-// model already knows.
+// model already knows. `DETECTORS` is fixed; the sounds a user teaches are
+// data in a SoundStore, turned into entries at runtime by `learnedDetector()`
+// and put in front of these by `withLearned()`.
 
 import sirenSweep from './rules/siren.js';
 import mosquitoWhine from './rules/mosquito.js';
 import { YAMNET_CATEGORIES } from './yamnet-categories.js';
+import { LEARNED_GROUP } from './learned.js';
 
 /** How the report names a detector's `source`. */
-export const SOURCE_LABELS = Object.freeze({ spectrum: 'Pattern rule', yamnet: 'YAMNet' });
+export const SOURCE_LABELS = Object.freeze({ spectrum: 'Pattern rule', yamnet: 'YAMNet', learned: 'Learned' });
 
 /**
  * The categories the menu lists, in order. Each is switched on and off as a
  * whole from its heading. A detector with no `group` is listed last.
  */
 export const GROUPS = Object.freeze([
+  LEARNED_GROUP,
   'Animals', 'People', 'Home', 'Street', 'Natural sounds', 'Environment and background',
 ]);
 
@@ -51,4 +58,9 @@ if (BY_ID.size !== DETECTORS.length) console.warn('[detect] duplicate detector i
 
 export function getDetector(id) {
   return BY_ID.get(id) || null;
+}
+
+/** The full catalog: the user's own sounds first, then the built-in ones. */
+export function withLearned(learned) {
+  return Object.freeze([...learned, ...DETECTORS]);
 }

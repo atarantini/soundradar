@@ -859,6 +859,84 @@ input[type="checkbox"] {
 }
 .det-tune input[type="range"] { width: 100%; }
 
+/* These set their own display, which would otherwise beat [hidden]. */
+.teach-card[hidden], .det-all[hidden] { display: none; }
+
+/* A learned sound's row: its switch, and Edit beside it. */
+.det-row-head { display: flex; align-items: center; gap: 0.5rem; }
+.det-row-head .check { flex: 1; min-width: 0; }
+.det-row-head .link { min-height: 2rem; padding: 0 0.4rem; }
+
+/* The teach card, inside My sounds. Record is the largest thing on it: it is
+   what a thumb is looking for while the sound is happening. */
+.teach-slot:empty { display: none; }
+.teach-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.65rem;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+.teach-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.teach-head .link { min-height: 2rem; }
+.teach-name {
+  flex: 1;
+  min-width: 0;
+  height: 2.2rem;
+  padding: 0 0.5rem;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  font-weight: 600;
+}
+.teach-name:focus { border-color: var(--accent); outline: none; }
+.teach-rec-row { display: flex; align-items: center; gap: 0.6rem; }
+.teach-rec {
+  flex-shrink: 0;
+  min-width: 7.5rem;
+  height: 2.75rem;
+  font-weight: 700;
+}
+.teach-rec.is-recording {
+  background: var(--flag);
+  border-color: var(--flag);
+  color: #fff;
+}
+.teach-line {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.teach-examples { list-style: none; margin: 0; padding: 0; }
+.teach-examples li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.75rem;
+}
+.teach-examples li.is-new { color: var(--accent); }
+.teach-examples .icon-cell { width: 2rem; height: 2rem; }
+.teach-msg { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--flag); }
+.teach-msg:empty { display: none; }
+.teach-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.teach-actions .link { min-height: 2rem; }
+/* Recording carries on with the menu closed; its summary says so. */
+.menu.is-recording > summary::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--flag);
+  animation: blink 1.15s ease-in-out infinite;
+}
+
 .model-card {
   display: flex;
   flex-direction: column;

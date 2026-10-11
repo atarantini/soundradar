@@ -93,6 +93,14 @@ desde un subdirectorio funciona.
   disparó realmente un detector. Agregar un sonido nuevo es una entrada en el catálogo
   (ver `CLAUDE.md`). Los choques son la categoría más débil: YAMNet tiende a
   oír la rotura de un vidrio chico como campanitas o pájaros.
+- **Enseñale tu propio sonido** — *Teach a sound…* en el menú Detect graba un
+  sonido tuyo (la bomba de calor, el portón, tu perro) mientras está sonando,
+  y desde ahí se detecta, registra, etiqueta y avisa como cualquier otro.
+  Grabalo varias veces para que reconozca mejor. No se entrena nada: guarda el
+  resumen que hace YAMNet de cada segundo grabado y escucha si aparece algo
+  parecido a alguno, así que aprende al instante y encuentra *ese* sonido
+  mucho mejor de lo que reconoce todos los de su tipo. Lo que se guarda es ese
+  resumen numérico, nunca el audio, y pertenece a la sesión.
 - **Sesiones** — estados guardados con nombre, cada uno con su propia
   configuración de pantalla y marcadores, que se cambian desde el menú de
   Sesión. Un relevamiento por habitación, por máquina, por visita a un
@@ -158,7 +166,9 @@ comparables responden "¿qué fue ese sonido?" mandando tu micrófono a un
 servidor.
 
 Lo único que se guarda son tus sesiones — configuración de pantalla,
-marcadores y qué detectores están activos — además de tu tema, en el
+marcadores, qué detectores están activos y los sonidos que enseñaste (el
+resumen numérico de YAMNet de cada segundo grabado, que no se puede volver a
+escuchar) — además de tu tema, en el
 `localStorage` de este navegador (claves con el prefijo `soundradar.`).
 Exportar escribe un archivo en tu propio disco; no se envía nada a ningún
 lado.
@@ -172,13 +182,15 @@ js/app.js             raíz de composición: settings, cableado, bucle de render
 js/core/              módulos de análisis y renderizado reutilizables, sin DOM
 js/core/sessions.js   estados guardados con nombre, y exportación/importación JSON de todos ellos
 js/core/alarm.js      el tono de la alarma de marcador y el campanazo de detección
-js/core/detect/       detección de sonidos: catálogo, motor, reglas, worker de YAMNet
+js/core/detect/       detección de sonidos: catálogo, motor, reglas, worker de YAMNet, sonidos aprendidos
 js/core/capture.js    toma de audio crudo (AudioWorklet) para el clasificador
 js/vendor/            TensorFlow.js, incluido como un único módulo ES
 models/yamnet/        los pesos del modelo YAMNet y su mapa de clases
+tools/                un script de Node que regenera un archivo de datos generado
 js/ruler.js           la regla de frecuencia compartida entre las placas
 js/markers-table.js   la tabla de informe de marcadores
 js/detect-menu.js     el menú Detect: detectores, medidores, umbrales
+js/teach-card.js      enseñar un sonido propio: grabar, nombrar, editar
 js/detections-table.js el registro de detecciones
 js/theme.js           lee los colores del canvas desde la hoja de estilos
 CHANGELOG.md          qué cambió en cada versión

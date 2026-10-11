@@ -14,11 +14,16 @@
 // per category (at the top of its body), and one per detector. The menu only
 // reports a slider moving; what each width overwrites is decided by the app.
 //
-// Rows are built once — the catalog does not change at runtime — and mutated
-// in place after that, so dragging a threshold slider is never interrupted by
-// a rebuild triggered by the very setting it is changing.
+// The built-in rows are built once — that catalog does not change at runtime —
+// and mutated in place after that, so dragging a threshold slider is never
+// interrupted by a rebuild triggered by the very setting it is changing. The
+// one exception is the **My sounds** group at the top, the sounds the user
+// taught: its rows are rebuilt by `setLearned()` when that list changes (a
+// sound taught, renamed or deleted), never on a settings change. It also holds
+// the "Teach a sound…" button and the slot the teach card opens in.
 
 import { groupOf, resolveThreshold, MIN_THRESHOLD, MAX_THRESHOLD } from './core/detect/thresholds.js';
+import { LEARNED_GROUP } from './core/detect/learned.js';
 
 /** A labelled threshold slider: `{ el, slider, value }`. */
 function thresholdSlider(label, ariaLabel, onInput) {
@@ -50,7 +55,7 @@ export class DetectMenu {
    * @param {HTMLElement} o.listEl   container for the categories and their rows
    * @param {HTMLElement} o.badgeEl  count of detectors switched on
    * @param {HTMLElement} o.stateEl  the model card's status line
-   * @param {object[]} o.catalog     already in category order
+   * @param {object[]} o.catalog     the built-in detectors, already in category order
    * @param {(id:string)=>string} o.colorOf
    * @param {(id:string, patch:object)=>void} o.onChange
    * @param {(ids:string[], patch:object)=>void} o.onChangeMany  one write for a category
@@ -58,22 +63,44 @@ export class DetectMenu {
    * @param {HTMLElement} [o.globalEl]  where the all-detectors threshold slider goes
    * @param {(t:number)=>void} [o.onGlobalThreshold]
    * @param {(group:string, t:number)=>void} [o.onGroupThreshold]
+   * @param {()=>void} [o.onTeach]        "Teach a sound…"
+   * @param {(id:string)=>void} [o.onEdit] a learned sound's Edit button
    */
   constructor({
     listEl, badgeEl, stateEl, catalog, colorOf, onChange, onChangeMany, onCollapse,
-    globalEl, onGlobalThreshold, onGroupThreshold,
+    globalEl, onGlobalThreshold, onGroupThreshold, onTeach, onEdit,
   }) {
     this.badgeEl = badgeEl;
     this.stateEl = stateEl;
     this.catalog = catalog;
+    this.colorOf = colorOf;
     this.onChange = onChange;
     this.onChangeMany = onChangeMany;
     this.onCollapse = onCollapse;
     this.onGroupThreshold = onGroupThreshold;
+    this.onEdit = onEdit;
     this.global = thresholdSlider('All sounds', 'Detection threshold for every sound', (t) => onGlobalThreshold?.(t));
     globalEl?.append(this.global.el);
     this.rows = new Map();
     this.groups = new Map(); // name → { head, box, count, toggle, body, ids, on, collapsed }
+
+    // My sounds: always there, even empty, because it is where teaching starts.
+    const mine = this._heading(LEARNED_GROUP, listEl);
+    this.groups.set(LEARNED_GROUP, mine);
+    const teach = document.createElement('button');
+    teach.type = 'button';
+    teach.className = 'btn btn-block';
+    teach.textContent = 'Teach a sound…';
+    teach.addEventListener('click', () => onTeach?.());
+    this.teachSlot = document.createElement('div');
+    this.teachSlot.className = 'teach-slot';
+    this.learnedHint = document.createElement('p');
+    this.learnedHint.className = 'hint';
+    this.learnedHint.textContent =
+      'Record a sound of your own — your heat pump, your gate, your dog — and it is listed here and detected like any other.';
+    mine.body.prepend(teach, this.teachSlot, this.learnedHint);
+    this.teachBtn = teach;
+
     let group = null;
     for (const def of catalog) {
       const name = groupOf(def);
@@ -151,7 +178,30 @@ export class DetectMenu {
     const m = group.ids.length;
     group.count.textContent = group.on
       ? `${group.on} of ${m} on`
-      : group.collapsed ? `${m} sound${m === 1 ? '' : 's'}` : '';
+      : group.collapsed && m ? `${m} sound${m === 1 ? '' : 's'}` : '';
+  }
+
+  /**
+   * The user's own sounds, as catalog entries (learned.js). Rebuilds only the
+   * My sounds rows; call `sync()` after it.
+   */
+  setLearned(defs) {
+    const g = this.groups.get(LEARNED_GROUP);
+    for (const id of g.ids) {
+      this.rows.get(id)?.el.remove();
+      this.rows.delete(id);
+    }
+    g.ids = [];
+    for (const def of defs) {
+      const row = this._row(def, this.colorOf(def.id), true);
+      g.body.append(row.el);
+      this.rows.set(def.id, row);
+      g.ids.push(def.id);
+    }
+    // With nothing taught there is nothing to switch or tune, only the button.
+    g.box.disabled = !defs.length;
+    g.all.el.hidden = !defs.length;
+    this.learnedHint.hidden = defs.length > 0;
   }
 
   /** Names of the folded categories, for saving. */
@@ -166,7 +216,7 @@ export class DetectMenu {
     }
   }
 
-  _row(def, color) {
+  _row(def, color, editable = false) {
     const el = document.createElement('div');
     el.className = 'det-row is-off';
     el.style.setProperty('--det-color', color);
@@ -227,7 +277,21 @@ export class DetectMenu {
     bell.addEventListener('click', () => this.onChange(def.id, { alarm: bell.getAttribute('aria-pressed') !== 'true' }));
 
     tune.append(meter, slider, value, bell);
-    el.append(label, desc, tune);
+    if (editable) {
+      // A learned sound's examples and name are edited in the teach card.
+      const head = document.createElement('div');
+      head.className = 'det-row-head';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'link';
+      edit.textContent = 'Edit';
+      edit.setAttribute('aria-label', `Edit ${def.label}`);
+      edit.addEventListener('click', () => this.onEdit?.(def.id));
+      head.append(label, edit);
+      el.append(head, desc, tune);
+    } else {
+      el.append(label, desc, tune);
+    }
     return { el, def, box, fill, mark, slider, value, bell, shown: NaN };
   }
 
@@ -254,7 +318,7 @@ export class DetectMenu {
     for (const g of this.groups.values()) {
       showThreshold(g.all, resolveThreshold({ id: '', group: g.name }, { ...s, detectors: {} }));
       g.on = g.ids.filter((id) => config[id]?.on).length;
-      g.box.checked = g.on === g.ids.length;
+      g.box.checked = g.ids.length > 0 && g.on === g.ids.length;
       g.box.indeterminate = g.on > 0 && g.on < g.ids.length;
       this._count(g);
     }

@@ -1,7 +1,7 @@
 // Main-thread side of the YAMNet classifier.
 //
 // Owns the worker and the capture tap. Nothing is loaded until a YAMNet
-// category is switched on — the runtime and weights ship with the app, but
+// category or a learned sound is switched on, or a sound is being taught — the runtime and weights ship with the app, but
 // ~17 MB is not something to fetch on every visit — and switching the last one
 // off terminates the worker, which frees the model.
 //
@@ -31,8 +31,10 @@ export class YamnetClassifier {
     this.error = '';
     this.backend = '';
     this.ms = NaN; // inference time of the last scored window
-    this.onscores = null; // (scores: Float32Array, t: number) => void
+    // (frame: { scores, embedding, learned }, t: number, silent: boolean) => void
+    this.onwindow = null;
     this.onstate = null; // (classifier) => void
+    this.bank = null; // the learned sounds' examples, kept to hand to a new worker
     this._attaching = null;
   }
 
@@ -76,6 +78,23 @@ export class YamnetClassifier {
     if (this.state !== 'off') this._set('off', { error: '', backend: '', ms: NaN });
   }
 
+  /**
+   * The learned sounds to match, from `bankOf()` in learned.js. Kept here so a
+   * worker spawned later (or again) gets the same bank.
+   */
+  setBank(bank) {
+    this.bank = bank;
+    this._sendBank();
+  }
+
+  _sendBank() {
+    if (!this.worker) return;
+    const { ids = [], counts = [], bank = null } = this.bank || {};
+    // A copy is transferred: this one is kept for the next worker.
+    const copy = bank ? bank.slice() : null;
+    this.worker.postMessage({ type: 'bank', ids, counts, bank: copy }, copy ? [copy.buffer] : []);
+  }
+
   _spawn() {
     let worker;
     try {
@@ -91,6 +110,7 @@ export class YamnetClassifier {
       this._set('error', { error: e.message || 'The classifier stopped unexpectedly.' });
     };
     worker.postMessage({ type: 'load', modelUrl: this.model.url });
+    this._sendBank();
     this._set('loading', { error: '' });
   }
 
@@ -104,7 +124,7 @@ export class YamnetClassifier {
       // Same clock as requestAnimationFrame's `now`, so the waterfall can
       // place the result on the row it describes.
       const t = msg.wallEnd - performance.timeOrigin - WINDOW_CENTRE_MS;
-      this.onscores?.(msg.scores, t, msg.silent);
+      this.onwindow?.({ scores: msg.scores, embedding: msg.embedding, learned: msg.learned }, t, msg.silent);
     }
   }
 }

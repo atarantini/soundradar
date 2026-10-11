@@ -37,6 +37,12 @@ Questions 1–3 preserve the project's zero-install promise completely. Question
 > cat, dog, insect, plus the mosquito rule), people (speech, shouting / screaming, crying, laughter), home
 > (door, door lock / keys, crash) and street (siren, traffic, train). Tier 1
 > user-taught templates remain the next step and slot into the same catalog.
+>
+> **Status (learned sounds, implemented).** The embedding hybrid below ships
+> as *Teach a sound…* in the Detect menu: the user records a sound, and it
+> becomes a catalog entry (`source: 'learned'`, the **My sounds** group) built
+> at runtime from a per-session `SoundStore`. See `plan-learned-sounds.md` for
+> the measurements behind the choices recorded under the hybrid.
 
 ## Detector modules
 
@@ -410,6 +416,31 @@ cosine distances is the entire training procedure.
 If Tier 3 ships at all, this is the reason to ship it. "Name that sound" is a
 party trick; "teach it *my* sound and be robust about it" is the tool.
 
+**As built** (learned sounds, `js/core/detect/learned.js`), three choices
+differ from the sketch above, each measured offline on 33 recordings
+(`plan-learned-sounds.md`):
+
+- **Centred.** YAMNet's embeddings are never negative, so unrelated sounds
+  already share a median cosine similarity of 0.32 (up to 0.82). Similarity is
+  taken after subtracting a fixed average sound (`yamnet-centre.js`). How that
+  average is made hardly matters for telling sounds apart, but one made from
+  synthetic noise and tones pushed every score up, so at the default threshold
+  four times as many unrelated clips crossed it; the shipped one is the mean
+  of real recordings.
+- **Nearest example, not nearest centroid.** A sound scores as close as its
+  closest stored window. The centroid of a bark and a whine is neither; the
+  nearest window kept 19 of 25 unseen clips of a kind apart from everything
+  else, against 13 for the centroid.
+- **What it is for.** Taught from one part of a recording, it found the rest
+  in 18 of 19 cases; taught from other examples of a kind, it recognised a
+  new one in 19 of 25, and from a single example in 15 of 25. It finds *that*
+  source again — which is what "my neighbour's heat pump" means — better than
+  it generalises to a category, and the interface says so.
+
+Matching runs in the YAMNet worker as one matrix product over every stored
+window, because a full bank (24 sounds × 160 windows) costs ~26 ms per window
+in plain JS. Examples are stored as 8-bit embeddings, never audio.
+
 ---
 
 ## Prior art available for porting
@@ -538,8 +569,8 @@ is the normal case for unattended monitoring.
    *for YAMNet specifically*: Google publishes YAMNet as a TF.js graph model
    that takes the raw 16 kHz waveform, so there is no JavaScript mel frontend
    to write and no unofficial conversion to trust. ORT remains the candidate
-   for models that are ONNX-native. The embedding + k-NN hybrid is still the
-   right next step for Tier 3.
+   for models that are ONNX-native. The embedding hybrid followed as learned
+   sounds (see *The hybrid that beats both tiers*).
 2. **`SharedArrayBuffer` or `postMessage`?** *Recommendation: `postMessage`
    with transferables as the baseline, SAB as an upgrade when cross-origin
    isolation happens to be present. Never require headers.*
