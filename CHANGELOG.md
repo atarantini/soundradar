@@ -114,6 +114,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Crowded dB labels on high-DPI screens.** The spectrum's dB grid was
+  spaced in device pixels, so a 3× phone drew a line and a label every ~15 px
+  — seven labels in the now shorter plate. It is spaced in CSS pixels, like
+  the labels themselves; at 1× nothing changes.
 - **Long marker lists and detection logs no longer squeeze the plots.** The
   two reports grew with their rows until they took most of the screen — with
   40 markers and 80 detections the waterfall shrank by 83% on a desktop and

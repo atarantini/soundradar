@@ -243,7 +243,9 @@ export class SpectrumView {
     // dB labels live in the left gutter so they never sit on top of the trace.
     ctx.textAlign = 'right';
     ctx.fillStyle = theme.axisText;
-    for (const db of dbTicks(settings.minDb, settings.maxDb, h)) {
+    // Tick density is a question of CSS pixels — the labels are — or a
+    // high-DPI phone packs twice or three times as many lines into a plate.
+    for (const db of dbTicks(settings.minDb, settings.maxDb, h / ratio)) {
       const py = Math.round(dbToY(db, settings.minDb, settings.maxDb, h, y)) + 0.5;
       ctx.strokeStyle = theme.gridMajor;
       ctx.beginPath();
