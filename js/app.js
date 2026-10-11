@@ -147,8 +147,8 @@ let lastReadoutAt = 0;
 let needsIdleDraw = true;
 
 const table = new MarkersTable({
+  reportEl: $('report'),
   bodyEl: $('markerRows'),
-  emptyEl: $('markersEmpty'),
   countEl: $('markerCount'),
   store: markers,
   onSelect: (id) => {
@@ -553,7 +553,9 @@ $('exportMarkers').addEventListener('click', () => {
   if (!markers.markers.length) return;
   downloadBlob(new Blob([markers.toCsv()], { type: 'text/csv' }), `${timestampSlug('soundradar-markers')}.csv`);
 });
-$('markHarmonics').addEventListener('click', () => {
+// In the report's header, and in the Analysis menu too: the report is hidden
+// until there is a marker, which is exactly when this is most wanted.
+function markHarmonics() {
   if (!dominant) return;
   const series = harmonics(dominant.freq, Math.min(settings.v.maxFreq, nyq()), 5);
   const entries = [
@@ -561,7 +563,9 @@ $('markHarmonics').addEventListener('click', () => {
     ...series.map((h) => ({ freq: h.freq, name: `Harmonic ×${h.n}`, bw: settings.v.markerBw })),
   ];
   markers.addMany(entries);
-});
+}
+$('markHarmonics').addEventListener('click', markHarmonics);
+$('markHarmonicsMenu').addEventListener('click', markHarmonics);
 $('reportToggle').addEventListener('click', () => {
   const collapsed = $('report').classList.toggle('collapsed');
   $('reportToggle').textContent = collapsed ? 'Show' : 'Hide';

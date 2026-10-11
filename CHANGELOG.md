@@ -19,6 +19,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   The input device picker moved from Display into a new **Source** menu, whose
   badge names the device in use, and the input level meter now sits in the
   spectrum plate's upper right.
+- **The markers report only appears once there is a marker.** An empty one
+  took a header row and a paragraph of instructions under the plots; now
+  the plates get that room until the first marker is planted, and the report
+  goes away again when the last one is removed or cleared. *Mark harmonics*
+  is also in the Analysis menu, with the how-to-plant hint, so it is still
+  there when the report is not.
 
 ### Added
 

@@ -1,6 +1,7 @@
 // The markers report: one table row per marker, numbered to match its pin on
 // the ruler. Rows are built when the list changes and mutated in place after
-// that, so editing a field is never interrupted by a redraw.
+// that, so editing a field is never interrupted by a redraw. With no markers
+// there is nothing to report, so the whole report is hidden.
 //
 // Every cell carries the same `col-*` class as its column header, so the
 // responsive rules can hide a whole column by name instead of counting
@@ -10,9 +11,9 @@ import { levelFraction } from './core/markers.js';
 import { dpr, formatFreq, resizeCanvasToDisplaySize } from './core/util.js';
 
 export class MarkersTable {
-  constructor({ bodyEl, emptyEl, countEl, store, onSelect }) {
+  constructor({ reportEl, bodyEl, countEl, store, onSelect }) {
+    this.reportEl = reportEl;
     this.bodyEl = bodyEl;
-    this.emptyEl = emptyEl;
     this.countEl = countEl;
     this.store = store;
     this.onSelect = onSelect;
@@ -25,7 +26,7 @@ export class MarkersTable {
     const markers = this.store.markers;
     this.bodyEl.replaceChildren();
     this.rows.clear();
-    this.emptyEl.hidden = markers.length > 0;
+    this.reportEl.hidden = markers.length === 0;
     this.countEl.textContent = String(markers.length);
 
     markers.forEach((m, index) => {

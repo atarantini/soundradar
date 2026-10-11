@@ -50,9 +50,9 @@ desde un subdirectorio funciona.
   quedan alineados verticalmente.
 - **Marcadores** — colocá uno en una frecuencia, dale un nombre, un ancho de
   banda, y observá su nivel en vivo, pico y tendencia en la tabla de
-  informe. Se guardan por frecuencia en Hz (no en píxeles), así que
-  sobreviven a cambios de zoom, tamaño de FFT y ventana, y persisten en
-  `localStorage`.
+  informe, que aparece en cuanto hay un marcador. Se guardan por frecuencia
+  en Hz (no en píxeles), así que sobreviven a cambios de zoom, tamaño de FFT
+  y ventana, y persisten en `localStorage`.
 - **Alarma de marcador (el "buscador")** — armá la campana en un marcador y
   dale un nivel de disparo: cuando esa banda lo alcanza, la app suena,
   subiendo de tono y repitiendo más rápido cuanto más fuerte sea. Caminá con
@@ -100,7 +100,8 @@ desde un subdirectorio funciona.
   una llamada *Default*.
 - **Marcar armónicos** — coloca un marcador en cada armónico de la
   frecuencia más fuerte, la forma más rápida de confirmar una única fuente
-  tonal (un motor, un ventilador, zumbido de línea eléctrica).
+  tonal (un motor, un ventilador, zumbido de línea eléctrica). Está en el
+  menú Analysis y en el informe de marcadores.
 - **Ajustar a la señal** — fija el piso y el techo de dB según lo que esté
   haciendo la entrada en ese momento.
 - **Preajustes de rango** — rango completo, retumbo, voz, siseo, zumbido de

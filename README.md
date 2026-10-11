@@ -46,9 +46,10 @@ bucket. All paths are relative, so serving it from a subdirectory works.
 - **Shared frequency ruler** between the two plates. Both plates map frequency
   to the same X, so a peak, its pin, and its stripe line up vertically.
 - **Markers** — plant one at a frequency, name it, give it a bandwidth, and
-  watch its live level, peak and trend in the report table. Stored by
-  frequency in Hz (not pixels), so they survive zoom, FFT size and window
-  changes, and persist in `localStorage`.
+  watch its live level, peak and trend in the report table, which appears
+  once there is a marker to report. Stored by frequency in Hz (not pixels),
+  so they survive zoom, FFT size and window changes, and persist in
+  `localStorage`.
 - **Marker alarm (the finder)** — arm the bell on a marker and give it a
   trigger level: whenever that band reaches it, the app beeps, rising in pitch
   and repeating faster the louder it gets. Walk around with a laptop or phone
@@ -93,7 +94,7 @@ bucket. All paths are relative, so serving it from a subdirectory works.
   starts life in one called *Default*.
 - **Mark harmonics** — drop a marker on each harmonic of the loudest
   frequency, which is the fastest way to confirm a single tonal source
-  (a motor, a fan, mains hum).
+  (a motor, a fan, mains hum). In the Analysis menu and the markers report.
 - **Fit to signal** — sets the dB floor and ceiling from what the input is
   doing right now.
 - **Span presets** — full range, rumble, speech, hiss, mains hum.

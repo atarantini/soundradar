@@ -121,7 +121,7 @@ History is stored as quantised dB in a ring buffer, *not* as canvas pixels. The 
 
 `MarkerStore` is the DOM-free model: CRUD, colour assignment from a palette, rolling dB history for the trend sparkline, per-marker alarm state (`alarm`, `alarmDb`), and `localStorage` persistence (into the active session's key). Markers are stored as centre frequency + bandwidth in Hz (never pixel positions), so they stay put across FFT size, zoom, and window changes.
 
-`MarkersTable` renders the report. Rows are built when the list changes and then **mutated in place**, so typing in a name field is never interrupted by a redraw — preserve that when editing it. Every cell carries its column's `col-*` class so the responsive rules can hide a column by name; don't reintroduce `nth-child` column rules, which silently break the moment a column is added. `js/ruler.js` renders the pins for the same markers, numbered to match the table rows.
+`MarkersTable` renders the report, and hides the whole section while there are no markers — which is why "Mark harmonics" is also in the Analysis menu. Rows are built when the list changes and then **mutated in place**, so typing in a name field is never interrupted by a redraw — preserve that when editing it. Every cell carries its column's `col-*` class so the responsive rules can hide a column by name; don't reintroduce `nth-child` column rules, which silently break the moment a column is added. `js/ruler.js` renders the pins for the same markers, numbered to match the table rows.
 
 ### Marker alarm (`js/core/alarm.js`)
 
