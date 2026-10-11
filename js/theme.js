@@ -23,6 +23,7 @@ export function readTheme() {
     traceFillTop: cssVar('--plate-fill', 'rgba(142,166,255,0.2)'),
     traceFillBottom: 'rgba(142,166,255,0.01)',
     peak: cssVar('--plate-peak', 'rgba(142,166,255,0.45)'),
+    peakMark: cssVar('--plate-peak-mark', '#ffb45a'),
     persistence: cssVar('--plate-peak', 'rgba(142,166,255,0.45)'),
 
     crosshair: 'rgba(255, 255, 255, 0.55)',

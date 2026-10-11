@@ -19,7 +19,7 @@ import { Waterfall } from './core/waterfall.js';
 import { PlotInput, zoomRange, panRange } from './core/input.js';
 import { drawHearingBand } from './core/reference.js';
 import {
-  freqToX, xToFreq, findDominantPeak,
+  freqToX, xToFreq, findDominantPeak, dbToY,
   freqToSlider, sliderToFreq, FREQ_SLIDER_STEPS,
 } from './core/scale.js';
 import { WATERFALL_MAPS, MAP_LABELS } from './core/colormap.js';
@@ -1072,11 +1072,48 @@ function drawDetections(ctx, rect) {
   ctx.restore();
 }
 
+/** The loudest peak: a small amber marker on the trace, with its frequency and level. */
+function drawPeakMark(ctx, rect) {
+  if (!dominant) return;
+  const s = settings.v;
+  const r = dpr();
+  const x = freqToX(dominant.freq, s, rect.w, rect.x);
+  if (x < rect.x || x > rect.x + rect.w) return;
+  const y = dbToY(dominant.db, s.minDb, s.maxDb, rect.h, rect.y);
+  const khz = dominant.freq >= 1000;
+  const text = `${khz ? (dominant.freq / 1000).toFixed(3) + ' kHz' : dominant.freq.toFixed(1) + ' Hz'} · ${dominant.db.toFixed(1)} dB`;
+
+  ctx.save();
+  ctx.fillStyle = theme.peakMark;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 3 * r);
+  ctx.lineTo(x - 5 * r, y - 11 * r);
+  ctx.lineTo(x + 5 * r, y - 11 * r);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.font = `600 ${11 * r}px ${theme.monoFont}`;
+  ctx.textBaseline = 'middle';
+  const pad = 5 * r;
+  const w = ctx.measureText(text).width + 2 * pad;
+  const h = 16 * r;
+  // Beside the triangle, to its right; to its left when there is no room.
+  const gap = 4 * r;
+  const bx = x + 5 * r + gap + w <= rect.x + rect.w ? x + 5 * r + gap : x - 5 * r - gap - w;
+  const by = clamp(y - 7 * r - h / 2, rect.y + 2 * r, rect.y + rect.h - h - 2 * r);
+  ctx.fillStyle = theme.detChip;
+  ctx.fillRect(bx, by, w, h);
+  ctx.fillStyle = theme.peakMark;
+  ctx.fillText(text, bx + pad, by + h / 2);
+  ctx.restore();
+}
+
 function drawOverlay(ctx, canvas, rect, view) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawHearingBand(ctx, rect, settings.v, theme);
   if (view === 'waterfall') drawTimeAxis(ctx, rect);
   drawMarkerBands(ctx, rect);
+  if (view === 'spectrum') drawPeakMark(ctx, rect);
   if (view === 'waterfall') drawDetections(ctx, rect);
   drawSelection(ctx, rect, view);
   drawCrosshair(ctx, rect, view);

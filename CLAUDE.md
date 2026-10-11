@@ -105,7 +105,7 @@ Each plate is two stacked `<canvas>` elements: a base canvas the module owns, an
 
 ### Frequency/dB ↔ pixel mapping (`js/core/scale.js`)
 
-All coordinate math is centralized here and is the one place that understands both linear and logarithmic frequency scales. `freqToX`/`xToFreq` convert between Hz and canvas X (respecting `settings.freqScale`), `dbToY`/`yToDb` map dB to canvas Y, `freqToBin`/`binToFreq` cross between Hz and FFT bin index, `bandPeakDb`/`bandPeak` find the peak across a bin range (used by markers), `findDominantPeak` + `refinePeakFreq` drive the "loudest frequency" readout with sub-bin interpolation, `buildColumnBins`/`columnDb` precompute the per-pixel-column bin ranges the plots draw from, and `freqTicks`/`dbTicks` generate axis ticks.
+All coordinate math is centralized here and is the one place that understands both linear and logarithmic frequency scales. `freqToX`/`xToFreq` convert between Hz and canvas X (respecting `settings.freqScale`), `dbToY`/`yToDb` map dB to canvas Y, `freqToBin`/`binToFreq` cross between Hz and FFT bin index, `bandPeakDb`/`bandPeak` find the peak across a bin range (used by markers), `findDominantPeak` + `refinePeakFreq` drive the amber loudest-peak mark on the spectrum plate (`drawPeakMark` in `app.js`) and "Mark harmonics", with sub-bin interpolation, `buildColumnBins`/`columnDb` precompute the per-pixel-column bin ranges the plots draw from, and `freqTicks`/`dbTicks` generate axis ticks.
 
 Pixel-space functions take an explicit `x0`/`w` pair so callers can reserve a gutter without redoing the offset by hand. **Every module that draws or hit-tests frequency data goes through these functions — keep it that way when adding features.**
 

@@ -43,6 +43,7 @@
   --plate-trace: #8ea6ff;
   --plate-fill:  rgba(142, 166, 255, 0.2);
   --plate-peak:  rgba(142, 166, 255, 0.45);
+  --plate-peak-mark: #ffb45a; /* the loudest peak: light amber */
   --plate-chip:  rgba(12, 16, 22, 0.82);
   --plate-chip-text: #e7ecf2;
 
@@ -348,8 +349,8 @@ button, input, select, output, table { font: inherit; color: inherit; }
   cursor: crosshair;
   overflow: hidden;
 }
-#spectrumPlot { flex: 1 1 36%; }
-#waterfallPlot { flex: 1 1 64%; }
+#spectrumPlot { flex: 1 1 24%; }
+#waterfallPlot { flex: 1 1 76%; }
 
 .field-view.no-waterfall #waterfallPlot { display: none; }
 .field-view.no-waterfall #spectrumPlot { flex: 1 1 100%; }

@@ -6,6 +6,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- The spectrum plate is shorter (about a quarter of the plates' height, was
+  over a third), leaving more room for the waterfall. The loudest peak is now
+  marked in amber on the spectrum itself, with its frequency and level.
+
 ### Added
 
 - **Detection thresholds for everything and for a category** — a slider at the
