@@ -136,6 +136,18 @@ export const YAMNET_CATEGORIES = [
     threshold: 0.35,
   }),
 
+  yamnetCategory({
+    // One item for all of AudioSet's music: instruments, genres and moods.
+    // Plain singing is left to its own AudioSet classes, which are not listed.
+    id: 'music',
+    label: 'Music',
+    group: 'People',
+    description: 'Music playing — any instrument, any genre; not someone merely singing.',
+    classes: ['Music'],
+    threshold: 0.5,
+    releaseMs: 2500,
+  }),
+
   // ---- Home
   yamnetCategory({
     id: 'door',
@@ -197,5 +209,71 @@ export const YAMNET_CATEGORIES = [
     group: 'Street',
     description: 'Trains, metro and trams, horns and squealing wheels.',
     classes: ['Train', 'Rail transport', 'Subway, metro, underground', 'Train horn', 'Train wheels squealing'],
+  }),
+
+  // ---- Natural sounds
+  yamnetCategory({
+    id: 'wind',
+    label: 'Wind',
+    group: 'Natural sounds',
+    description: 'Wind, leaves rustling — and wind blowing across the microphone.',
+    classes: ['Wind', 'Rustling leaves', 'Wind noise (microphone)'],
+  }),
+  yamnetCategory({
+    id: 'rain',
+    label: 'Rain',
+    group: 'Natural sounds',
+    description: 'Rain falling, drops, rain on a roof or window.',
+    classes: ['Rain', 'Raindrop', 'Rain on surface'],
+  }),
+  yamnetCategory({
+    id: 'thunder',
+    label: 'Thunder',
+    group: 'Natural sounds',
+    description: 'Thunder and thunderstorms.',
+    classes: ['Thunderstorm', 'Thunder'],
+  }),
+  yamnetCategory({
+    id: 'water',
+    label: 'Running water',
+    group: 'Natural sounds',
+    description: 'Streams, waterfalls, the sea and surf, gurgling.',
+    classes: ['Water', 'Stream', 'Waterfall', 'Ocean', 'Waves, surf', 'Gurgling'],
+  }),
+  yamnetCategory({
+    id: 'fire',
+    label: 'Fire',
+    group: 'Natural sounds',
+    description: 'A fire burning and crackling.',
+    classes: ['Fire', 'Crackle'],
+  }),
+
+  // ---- Environment and background: not a thing happening so much as the
+  // texture the room or the recording has.
+  yamnetCategory({
+    id: 'noise',
+    label: 'Noise',
+    group: 'Environment and background',
+    description: 'Steady noise: white or pink noise, static, general environmental noise.',
+    classes: ['Noise', 'Environmental noise', 'White noise', 'Pink noise', 'Static'],
+    threshold: 0.5,
+    releaseMs: 2000,
+  }),
+  yamnetCategory({
+    id: 'hum',
+    label: 'Mains hum',
+    group: 'Environment and background',
+    description: 'The 50/60 Hz electrical hum of mains-powered equipment.',
+    classes: ['Mains hum', 'Hum'],
+    releaseMs: 2000,
+  }),
+  yamnetCategory({
+    id: 'broadcast',
+    label: 'Television / radio',
+    group: 'Environment and background',
+    description: 'A television or radio playing in the background.',
+    classes: ['Television', 'Radio'],
+    threshold: 0.4,
+    releaseMs: 2500,
   }),
 ];

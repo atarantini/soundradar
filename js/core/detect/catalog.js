@@ -28,7 +28,9 @@ export const SOURCE_LABELS = Object.freeze({ spectrum: 'Pattern rule', yamnet: '
  * The categories the menu lists, in order. Each is switched on and off as a
  * whole from its heading. A detector with no `group` is listed last.
  */
-export const GROUPS = Object.freeze(['Animals', 'People', 'Home', 'Street']);
+export const GROUPS = Object.freeze([
+  'Animals', 'People', 'Home', 'Street', 'Natural sounds', 'Environment and background',
+]);
 
 const rank = (d) => {
   const i = GROUPS.indexOf(d.group);

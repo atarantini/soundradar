@@ -70,6 +70,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - Adding a sound is one catalog entry: a `yamnetCategory` listing AudioSet
     classes, or a rule module scored from the spectrum.
 
+- **Natural sounds and Environment and background** categories in the Detect
+  menu, plus **Music** under People. Natural sounds: wind, rain, thunder,
+  running water, fire. Environment and background: noise, mains hum,
+  television / radio. Thresholds are first guesses, not yet tuned against
+  recordings.
+
 - **More sounds to detect**, grouped in the Detect menu as Animals, People,
   Home and Street:
   - *People:* **Speech** (talking, conversation, whispering, crowd chatter),
