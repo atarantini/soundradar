@@ -108,6 +108,11 @@ export class AudioEngine {
     return devices.filter((d) => d.kind === 'audioinput');
   }
 
+  /** Resume a context the browser held back for lack of a gesture. Never undoes a pause. */
+  wake() {
+    if (this.running && !this.paused && this.ctx?.state === 'suspended') this.ctx.resume().catch(() => {});
+  }
+
   async start(deviceId) {
     const support = checkSupport();
     if (!support.ok) {
@@ -152,7 +157,12 @@ export class AudioEngine {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     }
-    if (this.ctx.state === 'suspended') await this.ctx.resume();
+    // Without a user gesture (capture started on page load) the browser keeps a
+    // new context suspended and resume() stays pending until the first click or
+    // key press; don't hold the start up on that. See `wake()`.
+    if (this.ctx.state === 'suspended') {
+      await Promise.race([this.ctx.resume(), new Promise((done) => setTimeout(done, 250))]);
+    }
 
     this.source = this.ctx.createMediaStreamSource(stream);
     this.analyser = this.ctx.createAnalyser();

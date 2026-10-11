@@ -1296,3 +1296,9 @@ syncControls();
 paintState();
 table.update(settings.v);
 requestAnimationFrame(frame);
+
+// Capture starts by itself. A browser lets the microphone open on page load
+// but keeps the audio context suspended until the first gesture, so the first
+// click, touch or key press wakes it.
+for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, () => engine.wake(), true);
+if (support.ok) startCapture();

@@ -8,6 +8,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Capture starts on its own when the page opens, so the browser asks for the
+  microphone straight away (Start capture is still there if it is refused).
+  Until the first click or key press the browser may hold the audio back; that
+  gesture wakes it.
 - The spectrum plate is shorter (about a quarter of the plates' height, was
   over a third), leaving more room for the waterfall. The "Loudest frequency",
   "Level" and "Resolution" readouts, and with them the summary strip, are gone: the loudest peak is now
