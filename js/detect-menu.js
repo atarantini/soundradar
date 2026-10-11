@@ -64,11 +64,12 @@ export class DetectMenu {
    * @param {(t:number)=>void} [o.onGlobalThreshold]
    * @param {(group:string, t:number)=>void} [o.onGroupThreshold]
    * @param {()=>void} [o.onTeach]        "Teach a sound…"
+   * @param {(file:File)=>void} [o.onImport] "Import a sound…", with the file picked
    * @param {(id:string)=>void} [o.onEdit] a learned sound's Edit button
    */
   constructor({
     listEl, badgeEl, stateEl, catalog, colorOf, onChange, onChangeMany, onCollapse,
-    globalEl, onGlobalThreshold, onGroupThreshold, onTeach, onEdit,
+    globalEl, onGlobalThreshold, onGroupThreshold, onTeach, onEdit, onImport,
   }) {
     this.badgeEl = badgeEl;
     this.stateEl = stateEl;
@@ -92,13 +93,36 @@ export class DetectMenu {
     teach.className = 'btn btn-block';
     teach.textContent = 'Teach a sound…';
     teach.addEventListener('click', () => onTeach?.());
+    // A sound exported from here (or from another browser) comes back as a new one.
+    const importBtn = document.createElement('button');
+    importBtn.type = 'button';
+    importBtn.className = 'btn';
+    importBtn.textContent = 'Import…';
+    importBtn.title = 'Add a sound from a file exported from a sound’s Edit card';
+    const file = document.createElement('input');
+    file.type = 'file';
+    file.accept = 'application/json,.json';
+    file.hidden = true;
+    importBtn.addEventListener('click', () => file.click());
+    file.addEventListener('change', () => {
+      const picked = file.files?.[0];
+      file.value = '';
+      if (picked) onImport?.(picked);
+    });
+    const buttons = document.createElement('div');
+    buttons.className = 'teach-buttons';
+    buttons.append(teach, importBtn, file);
+    /** One line under the buttons for what an import did, or why it could not. */
+    this.importMsg = document.createElement('p');
+    this.importMsg.className = 'hint teach-import-msg';
+    this.importMsg.setAttribute('role', 'status');
     this.teachSlot = document.createElement('div');
     this.teachSlot.className = 'teach-slot';
     this.learnedHint = document.createElement('p');
     this.learnedHint.className = 'hint';
     this.learnedHint.textContent =
       'Record a sound of your own — your heat pump, your gate, your dog — and it is listed here and detected like any other.';
-    mine.body.prepend(teach, this.teachSlot, this.learnedHint);
+    mine.body.prepend(buttons, this.importMsg, this.teachSlot, this.learnedHint);
     this.teachBtn = teach;
 
     let group = null;

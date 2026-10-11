@@ -437,6 +437,12 @@ differ from the sketch above, each measured offline on 33 recordings
   source again — which is what "my neighbour's heat pump" means — better than
   it generalises to a category, and the interface says so.
 
+Teaching keeps only the windows within 15 dB of a recording's loudest: a
+room is rarely below the silence gate, and a sound taught from the room
+between occurrences matches the room and stays "detected" in it. A learned
+sound can be exported with what it matched (embeddings, never audio) and
+inspected offline (`tools/inspect-sound.mjs`).
+
 Matching runs in the YAMNet worker as one matrix product over every stored
 window, because a full bank (24 sounds × 160 windows) costs ~26 ms per window
 in plain JS. Examples are stored as 8-bit embeddings, never audio.

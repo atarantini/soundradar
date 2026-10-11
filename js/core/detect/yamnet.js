@@ -31,7 +31,7 @@ export class YamnetClassifier {
     this.error = '';
     this.backend = '';
     this.ms = NaN; // inference time of the last scored window
-    // (frame: { scores, embedding, learned }, t: number, silent: boolean) => void
+    // (frame: { scores, embedding, learned, db }, t: number, silent: boolean) => void
     this.onwindow = null;
     this.onstate = null; // (classifier) => void
     this.bank = null; // the learned sounds' examples, kept to hand to a new worker
@@ -124,7 +124,7 @@ export class YamnetClassifier {
       // Same clock as requestAnimationFrame's `now`, so the waterfall can
       // place the result on the row it describes.
       const t = msg.wallEnd - performance.timeOrigin - WINDOW_CENTRE_MS;
-      this.onwindow?.({ scores: msg.scores, embedding: msg.embedding, learned: msg.learned }, t, msg.silent);
+      this.onwindow?.({ scores: msg.scores, embedding: msg.embedding, learned: msg.learned, db: msg.db }, t, msg.silent);
     }
   }
 }

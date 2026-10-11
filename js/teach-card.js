@@ -36,8 +36,9 @@ export class TeachCard {
    *   classifier runs while the card is open, so it is ready by the time Record is pressed
    * @param {(sound: object, isNew: boolean) => void} o.onSaved
    * @param {(id: string) => void} o.onDelete
+   * @param {(id: string) => void} o.onExport
    */
-  constructor({ slot, store, teach, status, onStartCapture, onStateChange, onSaved, onDelete }) {
+  constructor({ slot, store, teach, status, onStartCapture, onStateChange, onSaved, onDelete, onExport }) {
     this.slot = slot;
     this.store = store;
     this.teach = teach;
@@ -45,8 +46,9 @@ export class TeachCard {
     this.onStateChange = onStateChange;
     this.onSaved = onSaved;
     this.onDelete = onDelete;
+    this.onExport = onExport;
     this.soundId = null; // the sound being edited; null for a new one
-    this.pending = []; // [{ at, s, vecs: Float32Array[] }]
+    this.pending = []; // [{ at, s, dbs, vecs: Float32Array[] }]
     this.isOpen = false;
     this._build(onStartCapture);
     teach.onchange = () => this.refresh();
@@ -106,7 +108,13 @@ export class TeachCard {
         this.onDelete(sound.id);
       }
     });
-    actions.append(this.saveBtn, this.deleteBtn);
+    this.exportBtn = el('button', 'link', 'Export');
+    this.exportBtn.type = 'button';
+    this.exportBtn.title = 'Save this sound as a file, with what it detected during this visit';
+    this.exportBtn.addEventListener('click', () => this.soundId && this.onExport(this.soundId));
+    const right = el('span', 'teach-actions-right');
+    right.append(this.exportBtn, this.deleteBtn);
+    actions.append(this.saveBtn, right);
 
     const hint = el('p', 'hint');
     hint.textContent =
@@ -187,22 +195,23 @@ export class TeachCard {
   /** Stop recording; keep what was heard unless `discard`. */
   _stop(discard) {
     if (!this.teach.recording) return;
-    const windows = this.teach.stop(performance.now());
-    const seconds = this.teach.seconds;
+    const { vecs, dbs, seconds, backgroundSeconds } = this.teach.stop(performance.now());
     this.onStateChange();
     if (discard) return;
-    if (windows.length < MIN_WINDOWS || seconds < MIN_SECONDS) {
-      this.msg.textContent = `Only ${formatSeconds(seconds)} of sound was heard. Record at least ${formatSeconds(MIN_SECONDS)} while it is happening.`;
+    // The quiet stretches in between were the room, not the sound (teach.js).
+    const left = backgroundSeconds >= 0.5 ? ` ${formatSeconds(backgroundSeconds)} of quieter background was left out.` : '';
+    if (vecs.length < MIN_WINDOWS || seconds < MIN_SECONDS) {
+      this.msg.textContent = `Only ${formatSeconds(seconds)} of sound was heard. Record at least ${formatSeconds(MIN_SECONDS)} while it is happening.${left}`;
     } else {
-      this.pending.push({ at: new Date().toISOString(), s: Number(seconds.toFixed(2)), vecs: windows });
-      this.msg.textContent = this.teach.full ? 'Stopped: this sound cannot hold any more.' : '';
+      this.pending.push({ at: new Date().toISOString(), s: Number(seconds.toFixed(2)), dbs, vecs });
+      this.msg.textContent = this.teach.full ? `Stopped: this sound cannot hold any more.${left}` : left.trim();
     }
     this.refresh();
   }
 
   save() {
     if (this.teach.recording) this._stop(false);
-    const examples = this.pending.map((e) => ({ at: e.at, s: e.s, vecs: e.vecs.map(encodeVec) }));
+    const examples = this.pending.map((e) => ({ at: e.at, s: e.s, dbs: e.dbs, vecs: e.vecs.map(encodeVec) }));
     const isNew = !this.soundId;
     let sound;
     try {
@@ -287,6 +296,7 @@ export class TeachCard {
     this.saveBtn.textContent = sound ? 'Save changes' : 'Save sound';
     this.saveBtn.disabled = recording ? false : !sound && !this.pending.length;
     this.deleteBtn.hidden = !sound;
+    this.exportBtn.hidden = !sound;
   }
 
   _renderList(sound) {

@@ -1,8 +1,9 @@
 // The sounds the user has taught, per session.
 //
-// A sound is `{ id, label, created, examples: [{ at, s, vecs }] }`, where `s`
-// is the seconds of sound an example covers and each string in `vecs` is one
-// window's YAMNet embedding in the 8-bit form of learned.js. Examples are embeddings, never audio: they cannot be played back.
+// A sound is `{ id, label, created, examples: [{ at, s, dbs, vecs }] }`, where
+// `s` is the seconds of sound an example covers, each string in `vecs` is one
+// window's YAMNet embedding in the 8-bit form of learned.js, and `dbs` holds
+// those windows' levels in dBFS (absent in sounds taught before it existed). Examples are embeddings, never audio: they cannot be played back.
 //
 // They live in their own localStorage record next to the session's settings
 // and markers, not inside `Settings`: settings are rewritten on every slider
@@ -32,7 +33,12 @@ function cleanLabel(label, fallback = 'My sound') {
 }
 
 const windowsIn = (examples) => examples.reduce((n, e) => n + e.vecs.length, 0);
-const copyExample = (e) => ({ at: e.at, vecs: [...e.vecs], ...(Number.isFinite(e.s) ? { s: e.s } : {}) });
+const copyExample = (e) => ({
+  at: e.at,
+  vecs: [...e.vecs],
+  ...(Number.isFinite(e.s) ? { s: e.s } : {}),
+  ...(Array.isArray(e.dbs) && e.dbs.length === e.vecs.length ? { dbs: [...e.dbs] } : {}),
+});
 
 /**
  * A clean list from whatever was stored or imported: unknown fields dropped,
@@ -50,11 +56,20 @@ export function normalizeSounds(value) {
     let room = MAX_WINDOWS;
     for (const ex of Array.isArray(raw.examples) ? raw.examples : []) {
       if (!ex || !Array.isArray(ex.vecs) || room <= 0) continue;
-      const vecs = ex.vecs.filter((v) => decodeVec(v)).slice(0, room);
-      if (!vecs.length) continue;
-      room -= vecs.length;
+      // Levels travel with their windows; a window that does not decode
+      // takes its level with it, and a level list that does not line up is dropped.
+      const levels = Array.isArray(ex.dbs) && ex.dbs.length === ex.vecs.length ? ex.dbs.map(Number) : null;
+      const keep = ex.vecs.map((v, i) => i).filter((i) => decodeVec(ex.vecs[i])).slice(0, room);
+      if (!keep.length) continue;
+      room -= keep.length;
       const s = Number(ex.s);
-      examples.push({ at: typeof ex.at === 'string' ? ex.at : '', vecs, ...(Number.isFinite(s) && s > 0 ? { s: Math.min(s, 600) } : {}) });
+      const dbs = levels && keep.every((i) => Number.isFinite(levels[i])) ? keep.map((i) => Math.max(-200, Math.min(20, levels[i]))) : null;
+      examples.push({
+        at: typeof ex.at === 'string' ? ex.at : '',
+        vecs: keep.map((i) => ex.vecs[i]),
+        ...(Number.isFinite(s) && s > 0 ? { s: Math.min(s, 600) } : {}),
+        ...(dbs ? { dbs } : {}),
+      });
     }
     if (!examples.length) continue;
     ids.add(raw.id);

@@ -47,6 +47,13 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - Matching runs in the classifier's worker, alongside the built-in
     categories, and the model loads as soon as the teach card opens so the
     first seconds of the sound are not lost.
+  - **Export and import a learned sound**: *Export* in its Edit card saves
+    it as a file — its examples and settings, its detections this visit, and
+    the recent windows it matched (summaries, not audio); *Import…* in My
+    sounds adds one back as a new sound. `tools/inspect-sound.mjs` reports on
+    such a file: what YAMNet hears in each recorded second, which are really
+    the room, what the detections matched, and what threshold would let a
+    long detection end — and `--clean` writes an improved copy to import.
 
 - **Resizable plots and reports** — drag the bar between the plots and the
   markers / detections reports to give either more room (touch works too;
@@ -140,6 +147,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A learned sound that stays detected.** Teaching kept every window above
+  the −70 dBFS silence gate, and a room is rarely that quiet, so the pauses
+  in a recording were learned as part of the sound — which then matched the
+  room and held its detections open. Teaching now keeps only what is within
+  15 dB of the loudest moment, says how much quieter background it left out,
+  and stores each window's level. Sounds taught before this keep their
+  examples; export one and run `tools/inspect-sound.mjs --clean` on it to
+  drop the room.
+- Switched-off learned sounds are no longer matched in the background.
 - **Crowded dB labels on high-DPI screens.** The spectrum's dB grid was
   spaced in device pixels, so a 3× phone drew a line and a label every ~15 px
   — seven labels in the now shorter plate. It is spaced in CSS pixels, like

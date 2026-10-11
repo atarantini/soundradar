@@ -96,6 +96,14 @@ bucket. All paths are relative, so serving it from a subdirectory works.
   close to one of them, so it learns in an instant and finds *that* sound
   again much better than it recognises everything of its kind. What is kept
   is that numeric summary, never the audio, and it belongs to the session.
+  *Export* (in a sound's Edit card) saves it as a file, together with what it
+  detected and matched during this visit; *Import…* adds one back. If a sound
+  misbehaves — it stays "detected", or fires on the wrong thing — export it
+  while that is happening and run `node tools/inspect-sound.mjs file.json`
+  (or hand the file to an assistant): it says what each recorded second
+  sounds like to YAMNet, which ones are really the room, and what the
+  detections matched, and `--clean out.json` writes an improved copy to
+  import.
 - **Sessions** — named save states, each with its own display settings and
   markers, switched from the Session menu. One survey per room, per machine,
   per site visit. The app always opens in the session you were last in, and
@@ -174,7 +182,7 @@ js/core/detect/       sound detection: catalog, engine, rules, YAMNet worker, le
 js/core/capture.js    raw-audio tap (AudioWorklet) for the classifier
 js/vendor/            TensorFlow.js, vendored as a single ES module
 models/yamnet/        the YAMNet model weights and class map
-tools/                a Node script that regenerates a generated data file
+tools/                Node scripts: regenerate the learned-sound centre, inspect a learned sound
 js/ruler.js           the shared frequency ruler between the plates
 js/markers-table.js   the marker report table
 js/detect-menu.js     the Detect menu: detector toggles, meters, thresholds

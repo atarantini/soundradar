@@ -12,6 +12,9 @@ import { DETECTORS, withLearned } from './core/detect/catalog.js';
 import { learnedDetector, bankOf } from './core/detect/learned.js';
 import { SoundStore } from './core/detect/sounds.js';
 import { TeachSession } from './core/detect/teach.js';
+import { WindowHistory } from './core/detect/evidence.js';
+import { makeSoundFile, readSoundFile } from './core/detect/sound-file.js';
+import { RELEASE_RATIO } from './core/detect/trigger.js';
 import { resolveThreshold, groupOf } from './core/detect/thresholds.js';
 import { DetectionEngine, SPECTRUM_INPUT } from './core/detect/engine.js';
 import { DetectionLog } from './core/detect/log.js';
@@ -122,6 +125,8 @@ const alarm = new AlarmTone({ getContext: () => engine.ctx });
 // `catalog` is always the built-in detectors with the learned ones in front.
 const sounds = new SoundStore({ storageKey: sessionKeys.sounds });
 const teach = new TeachSession();
+// The last few minutes of what learned sounds scored, in memory, for export.
+const history = new WindowHistory();
 let catalog = withLearned(sounds.sounds.map(learnedDetector));
 const detectLog = new DetectionLog();
 const clips = new ClipRecorder({ log: detectLog });
@@ -186,6 +191,7 @@ const detectMenu = new DetectMenu({
     $('menuDetect').open = true;
   },
   onEdit: (id) => teachCard.openEdit(id),
+  onImport: importSound,
   onChange: setDetector,
   onChangeMany: setDetectors,
   onCollapse: (names) => settings.set({ detectCollapsed: names }, []),
@@ -209,6 +215,7 @@ const teachCard = new TeachCard({
     if (isNew) setDetector(sound.id, { on: true });
   },
   onDelete: deleteSound,
+  onExport: exportSound,
 });
 
 const detectionsTable = new DetectionsTable({
@@ -480,6 +487,7 @@ function activateSession(id) {
   sessions.setActive(id);
   const keys = sessions.keysFor(id);
   teachCard.close(); // an unsaved recording belongs to the session it was made in
+  history.clear(); // and so does what the sounds were matching
   sounds.useStorage(keys.sounds); // first, so the settings sync sees this session's catalog
   settings.useStorage(keys.settings); // notifies 'all' → controls, engine, plots
   markers.useStorage(keys.markers);
@@ -734,6 +742,7 @@ function disableDetectorAlarms() {
  */
 function syncDetection() {
   detection.configure(settings.v.detectors, (def) => resolveThreshold(def, settings.v));
+  syncBank();
   syncClassifier();
   // Off means keep nothing; on with no detector running just stops listening.
   if (!settings.v.detectClips) clips.disable();
@@ -749,6 +758,18 @@ function syncDetection() {
 function syncDetectionsPanel() {
   const show = detection.slots.size > 0 || detectLog.entries.length > 0;
   if ($('detections').hidden === show) $('detections').hidden = !show;
+}
+
+// The worker matches only the learned sounds that are on. The bank is sent
+// again only when that set or their examples change — not on every move of a
+// threshold slider, which also lands here.
+let bankKey = '';
+function syncBank() {
+  const on = sounds.sounds.filter((s) => settings.v.detectors[s.id]?.on);
+  const key = on.map((s) => `${s.id}:${s.examples.map((e) => `${e.at}/${e.vecs.length}`).join(',')}`).join('|');
+  if (key === bankKey) return;
+  bankKey = key;
+  classifier.setBank(bankOf(on, (s) => sounds.vectorsOf(s)));
 }
 
 // An open teach card loads the model too, so it is ready by the time Record is
@@ -768,11 +789,46 @@ function rebuildCatalog() {
   catalog = withLearned(learned);
   detection.setCatalog(catalog);
   detectMenu.setLearned(learned);
-  classifier.setBank(bankOf(sounds.sounds, (s) => sounds.vectorsOf(s)));
-  syncDetection();
+  syncDetection(); // → syncBank()
   teachCard.refresh();
 }
 sounds.subscribe(rebuildCatalog);
+
+/**
+ * A learned sound as a file (sound-file.js): its examples and settings, and
+ * what it detected and matched during this visit.
+ */
+function exportSound(id) {
+  const sound = sounds.get(id);
+  const def = catalog.find((d) => d.id === id);
+  if (!sound || !def) return;
+  const own = settings.v.detectors[id] || {};
+  const threshold = resolveThreshold(def, settings.v);
+  const releaseLevel = threshold * RELEASE_RATIO;
+  const file = makeSoundFile({
+    sound,
+    settings: { on: own.on, alarm: own.alarm, threshold, ownThreshold: own.threshold, releaseLevel },
+    detections: detectLog.entries.filter((e) => e.detectorId === id).reverse(),
+    evidence: history.forSound(id, releaseLevel),
+    now: performance.now(),
+  });
+  const slug = sound.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'sound';
+  downloadBlob(new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' }), `${timestampSlug(`soundradar-sound-${slug}`)}.json`);
+}
+
+/** Add a sound from a file: always a new sound, switched on, as it was set. */
+async function importSound(file) {
+  const msg = detectMenu.importMsg;
+  try {
+    const { sound, settings: set } = readSoundFile(await file.text());
+    const added = sounds.add(sound.label, sound.examples);
+    setDetector(added.id, { on: true, alarm: set.alarm, ...(Number.isFinite(set.threshold) ? { threshold: set.threshold } : {}) });
+    const n = added.examples.length;
+    msg.textContent = `Added “${added.label}” (${n} example${n === 1 ? '' : 's'}).${sounds.saveFailed ? ' Kept for this visit only: this browser’s storage is full.' : ''}`;
+  } catch (err) {
+    msg.textContent = err.message || 'That file could not be read.';
+  }
+}
 
 /** Forget a learned sound and its switch, bell and threshold. */
 function deleteSound(id) {
@@ -796,7 +852,8 @@ classifier.onwindow = (frame, t, silent) => {
   // A window can land just after a pause; it describes audio the user has
   // already stopped looking at.
   if (!engine.running || engine.paused) return;
-  teach.push(frame.embedding, t, silent);
+  teach.push(frame.embedding, t, silent, frame.db);
+  if (!silent) history.push(frame, t);
   // A sound being given another example must not log itself while it is.
   const taught = teachCard.recording ? teachCard.soundId : null;
   if (taught && frame.learned) frame = { ...frame, learned: { ...frame.learned, [taught]: 0 } };

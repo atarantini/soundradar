@@ -101,6 +101,14 @@ desde un subdirectorio funciona.
   parecido a alguno, así que aprende al instante y encuentra *ese* sonido
   mucho mejor de lo que reconoce todos los de su tipo. Lo que se guarda es ese
   resumen numérico, nunca el audio, y pertenece a la sesión.
+  *Export* (en la tarjeta Edit del sonido) lo guarda como archivo, junto con lo
+  que detectó y lo que coincidió durante esta visita; *Import…* lo vuelve a
+  agregar. Si un sonido se porta mal — queda "detectado" o salta con otra
+  cosa — exportalo mientras pasa y corré `node tools/inspect-sound.mjs
+  archivo.json` (o pasale el archivo a un asistente): dice cómo suena cada
+  segundo grabado para YAMNet, cuáles son en realidad la habitación y con qué
+  coincidieron las detecciones, y `--clean salida.json` escribe una copia
+  mejorada para importar.
 - **Sesiones** — estados guardados con nombre, cada uno con su propia
   configuración de pantalla y marcadores, que se cambian desde el menú de
   Sesión. Un relevamiento por habitación, por máquina, por visita a un
@@ -186,7 +194,7 @@ js/core/detect/       detección de sonidos: catálogo, motor, reglas, worker de
 js/core/capture.js    toma de audio crudo (AudioWorklet) para el clasificador
 js/vendor/            TensorFlow.js, incluido como un único módulo ES
 models/yamnet/        los pesos del modelo YAMNet y su mapa de clases
-tools/                un script de Node que regenera un archivo de datos generado
+tools/                scripts de Node: regenerar el centro de los sonidos aprendidos, inspeccionar uno
 js/ruler.js           la regla de frecuencia compartida entre las placas
 js/markers-table.js   la tabla de informe de marcadores
 js/detect-menu.js     el menú Detect: detectores, medidores, umbrales

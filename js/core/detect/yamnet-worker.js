@@ -13,7 +13,8 @@
 //                { type: 'detach' }
 //                { type: 'bank', ids, counts, bank }   (learned sounds; bank transferred)
 // Messages out:  { type: 'ready', backend } | { type: 'error', message }
-//                { type: 'scores', scores, embedding, learned, wallEnd, ms, silent }
+//                { type: 'scores', scores, embedding, learned, db, wallEnd, ms, silent }
+//                (`db`: the window's RMS level in dBFS)
 
 import * as tf from '../../vendor/tf.fesm.min.js';
 import { Resampler } from '../resample.js';
@@ -152,9 +153,10 @@ async function classify() {
 
   let sum = 0;
   for (let i = 0; i < WINDOW; i++) sum += ring[i] * ring[i];
+  const db = 10 * Math.log10(sum / WINDOW + 1e-20);
   if (Math.sqrt(sum / WINDOW) < SILENCE_RMS) {
     const scores = new Float32Array(CLASSES);
-    self.postMessage({ type: 'scores', scores, embedding: null, learned: null, wallEnd, ms: 0, silent: true }, [scores.buffer]);
+    self.postMessage({ type: 'scores', scores, embedding: null, learned: null, db, wallEnd, ms: 0, silent: true }, [scores.buffer]);
     busy = false;
     return;
   }
@@ -191,7 +193,7 @@ async function classify() {
     hop = Math.min(MAX_HOP, Math.max(HOP, Math.round((ms * 1.5 * RATE) / 1000)));
     const s32 = Float32Array.from(scores);
     const e32 = Float32Array.from(embedding);
-    self.postMessage({ type: 'scores', scores: s32, embedding: e32, learned, wallEnd, ms, silent: false }, [s32.buffer, e32.buffer]);
+    self.postMessage({ type: 'scores', scores: s32, embedding: e32, learned, db, wallEnd, ms, silent: false }, [s32.buffer, e32.buffer]);
   } catch (err) {
     self.postMessage({ type: 'error', message: err?.message || String(err) });
   } finally {

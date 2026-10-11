@@ -927,6 +927,10 @@ input[type="checkbox"] {
 .teach-msg:empty { display: none; }
 .teach-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .teach-actions .link { min-height: 2rem; }
+.teach-actions-right { display: flex; gap: 0.25rem; }
+.teach-buttons { display: grid; grid-template-columns: 1fr auto; gap: 0.4rem; }
+.teach-import-msg:empty { display: none; }
+.teach-import-msg { margin-top: 0.35rem; }
 /* Recording carries on with the menu closed; its summary says so. */
 .menu.is-recording > summary::before {
   content: "";
