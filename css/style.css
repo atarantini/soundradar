@@ -795,6 +795,17 @@ input[type="checkbox"] {
 .det-group:first-child { margin-top: 0.2rem; }
 .det-group .check { flex: 1; min-height: 2rem; }
 .det-group .tag { color: var(--ink-2); font-size: 0.625rem; }
+.det-all {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ink-2);
+  padding: 0.15rem 0 0.35rem;
+}
+.det-all > span:first-child { white-space: nowrap; min-width: 6.5rem; }
+.det-all input[type="range"] { flex: 1; min-width: 0; }
+.det-all .num { width: auto; }
 .det-group-count { font-size: 0.6875rem; color: var(--ink-3); white-space: nowrap; }
 .det-group-toggle { width: 2rem; height: 2rem; font-size: 0.8rem; }
 /* Folded but sounding: the heading carries the signal its rows cannot. */

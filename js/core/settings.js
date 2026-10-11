@@ -29,6 +29,11 @@ export const BASE_DEFAULTS = {
   // Sound detectors, by catalog id: `{ on, alarm, threshold? }`. Only what the
   // user has touched is stored; a missing threshold means the catalog default.
   detectors: {},
+  // How sure a detector must be before it logs an event: one value for all, and
+  // optionally one per category (by name). A detector's own value, in
+  // `detectors`, beats its category's, which beats this. See detect/thresholds.js.
+  detectThreshold: 0.8,
+  detectGroupThresholds: {},
   // Keep a short audio clip of each detection, in memory only. Off by default:
   // it is the one feature that holds on to sound.
   detectClips: false,
@@ -58,6 +63,17 @@ function normalizeDetectors(value) {
     const threshold = entry.threshold == null ? NaN : Number(entry.threshold);
     if (Number.isFinite(threshold)) clean.threshold = clamp(threshold, 0.05, 0.95);
     out[id] = clean;
+  }
+  return out;
+}
+
+/** A clean `{ category: threshold }` map. */
+function normalizeGroupThresholds(value) {
+  const out = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return out;
+  for (const name of Object.keys(value).slice(0, 16)) {
+    const t = value[name] == null ? NaN : Number(value[name]);
+    if (name.length <= 40 && Number.isFinite(t)) out[name] = clamp(t, 0.05, 0.95);
   }
   return out;
 }
@@ -94,6 +110,9 @@ export function normalize(s, nyquist = 24000) {
   s.showHearingBand = Boolean(s.showHearingBand);
   s.alarmMuted = Boolean(s.alarmMuted);
   s.detectors = normalizeDetectors(s.detectors);
+  const dt = Number(s.detectThreshold);
+  s.detectThreshold = clamp(Number.isFinite(dt) ? dt : BASE_DEFAULTS.detectThreshold, 0.05, 0.95);
+  s.detectGroupThresholds = normalizeGroupThresholds(s.detectGroupThresholds);
   s.detectClips = Boolean(s.detectClips);
   s.detectCollapsed = Array.isArray(s.detectCollapsed)
     ? [...new Set(s.detectCollapsed.filter((g) => typeof g === 'string' && g.length <= 40))].slice(0, 16)

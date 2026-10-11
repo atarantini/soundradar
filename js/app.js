@@ -9,6 +9,7 @@ import { MarkerStore } from './core/markers.js';
 import { SessionStore, DEFAULT_SESSION_ID } from './core/sessions.js';
 import { AlarmTone } from './core/alarm.js';
 import { DETECTORS } from './core/detect/catalog.js';
+import { resolveThreshold, groupOf } from './core/detect/thresholds.js';
 import { DetectionEngine, SPECTRUM_INPUT } from './core/detect/engine.js';
 import { DetectionLog } from './core/detect/log.js';
 import { ClipRecorder } from './core/detect/clips.js';
@@ -165,6 +166,9 @@ const detectMenu = new DetectMenu({
   onChange: setDetector,
   onChangeMany: setDetectors,
   onCollapse: (names) => settings.set({ detectCollapsed: names }, []),
+  globalEl: $('detectGlobal'),
+  onGlobalThreshold: setGlobalThreshold,
+  onGroupThreshold: setGroupThreshold,
 });
 
 const detectionsTable = new DetectionsTable({
@@ -578,6 +582,36 @@ function setDetectors(ids, patch) {
   settings.set({ detectors: next }, ['detect']);
 }
 
+/** `settings.detectors` with the own threshold removed from those matching `inScope`. */
+function withoutOwnThresholds(inScope) {
+  const next = {};
+  for (const [id, d] of Object.entries(settings.v.detectors)) {
+    const { threshold, ...rest } = d;
+    next[id] = inScope(id) ? rest : d;
+  }
+  return next;
+}
+
+// A wider slider writes over the narrower ones, so moving "all" really does
+// apply to all: see detect/thresholds.js for the order they are read in.
+function setGlobalThreshold(t) {
+  settings.set(
+    { detectThreshold: t, detectGroupThresholds: {}, detectors: withoutOwnThresholds(() => true) },
+    ['detect']
+  );
+}
+
+function setGroupThreshold(group, t) {
+  const ids = new Set(DETECTORS.filter((d) => groupOf(d) === group).map((d) => d.id));
+  settings.set(
+    {
+      detectGroupThresholds: { ...settings.v.detectGroupThresholds, [group]: t },
+      detectors: withoutOwnThresholds((id) => ids.has(id)),
+    },
+    ['detect']
+  );
+}
+
 function armedDetectorCount() {
   return Object.values(settings.v.detectors).filter((d) => d.on && d.alarm).length;
 }
@@ -597,14 +631,14 @@ function disableDetectorAlarms() {
  * loaded while a YAMNet category is on, and dropped again when none is.
  */
 function syncDetection() {
-  detection.configure(settings.v.detectors);
+  detection.configure(settings.v.detectors, (def) => resolveThreshold(def, settings.v));
   if (detection.needsModel) classifier.enable(engine);
   else classifier.disable();
   // Off means keep nothing; on with no detector running just stops listening.
   if (!settings.v.detectClips) clips.disable();
   else if (detection.slots.size) clips.enable(engine);
   else clips.detach();
-  detectMenu.sync(settings.v.detectors);
+  detectMenu.sync(settings.v);
   detectMenu.setCollapsed(settings.v.detectCollapsed);
   syncDetectionsPanel();
 }

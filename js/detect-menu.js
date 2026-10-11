@@ -10,9 +10,39 @@
 // is on screen: it never switches anything, a folded heading still says how
 // many of its sounds are on, and it lights up while one of them is sounding.
 //
+// Thresholds are set at three widths: one global slider (above the list), one
+// per category (at the top of its body), and one per detector. The menu only
+// reports a slider moving; what each width overwrites is decided by the app.
+//
 // Rows are built once — the catalog does not change at runtime — and mutated
 // in place after that, so dragging a threshold slider is never interrupted by
 // a rebuild triggered by the very setting it is changing.
+
+import { groupOf, resolveThreshold, MIN_THRESHOLD, MAX_THRESHOLD } from './core/detect/thresholds.js';
+
+/** A labelled threshold slider: `{ el, slider, value }`. */
+function thresholdSlider(label, ariaLabel, onInput) {
+  const el = document.createElement('label');
+  el.className = 'det-all';
+  const text = document.createElement('span');
+  text.textContent = label;
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = String(MIN_THRESHOLD);
+  slider.max = String(MAX_THRESHOLD);
+  slider.step = '0.05';
+  slider.setAttribute('aria-label', ariaLabel);
+  slider.addEventListener('input', () => onInput(Number(slider.value)));
+  const value = document.createElement('output');
+  value.className = 'num';
+  el.append(text, slider, value);
+  return { el, slider, value };
+}
+
+function showThreshold(ctl, t) {
+  if (Number(ctl.slider.value) !== t) ctl.slider.value = String(t);
+  ctl.value.value = `${Math.round(t * 100)}%`;
+}
 
 export class DetectMenu {
   /**
@@ -25,19 +55,28 @@ export class DetectMenu {
    * @param {(id:string, patch:object)=>void} o.onChange
    * @param {(ids:string[], patch:object)=>void} o.onChangeMany  one write for a category
    * @param {(collapsed:string[])=>void} [o.onCollapse] the user folded or unfolded one
+   * @param {HTMLElement} [o.globalEl]  where the all-detectors threshold slider goes
+   * @param {(t:number)=>void} [o.onGlobalThreshold]
+   * @param {(group:string, t:number)=>void} [o.onGroupThreshold]
    */
-  constructor({ listEl, badgeEl, stateEl, catalog, colorOf, onChange, onChangeMany, onCollapse }) {
+  constructor({
+    listEl, badgeEl, stateEl, catalog, colorOf, onChange, onChangeMany, onCollapse,
+    globalEl, onGlobalThreshold, onGroupThreshold,
+  }) {
     this.badgeEl = badgeEl;
     this.stateEl = stateEl;
     this.catalog = catalog;
     this.onChange = onChange;
     this.onChangeMany = onChangeMany;
     this.onCollapse = onCollapse;
+    this.onGroupThreshold = onGroupThreshold;
+    this.global = thresholdSlider('All sounds', 'Detection threshold for every sound', (t) => onGlobalThreshold?.(t));
+    globalEl?.append(this.global.el);
     this.rows = new Map();
     this.groups = new Map(); // name → { head, box, count, toggle, body, ids, on, collapsed }
     let group = null;
     for (const def of catalog) {
-      const name = def.group || 'Other';
+      const name = groupOf(def);
       if (name !== group) {
         group = name;
         this.groups.set(name, this._heading(name, listEl));
@@ -79,7 +118,13 @@ export class DetectMenu {
 
     head.append(label, count, toggle);
     listEl.append(head, body);
-    const group = { name, head, box, count, toggle, body, ids: [], on: 0, collapsed: false };
+    const all = thresholdSlider(
+      `All ${name.toLowerCase()}`,
+      `Detection threshold for every ${name.toLowerCase()} sound`,
+      (t) => this.onGroupThreshold?.(name, t)
+    );
+    body.append(all.el);
+    const group = { name, head, box, count, toggle, body, all, ids: [], on: 0, collapsed: false };
     // An indeterminate box comes back checked from a click: some on → all on.
     box.addEventListener('change', () => this.onChangeMany(group.ids, { on: box.checked }));
     toggle.addEventListener('click', () => {
@@ -186,12 +231,17 @@ export class DetectMenu {
     return { el, def, box, fill, mark, slider, value, bell, shown: NaN };
   }
 
-  /** Reflect `settings.detectors` — checkboxes, thresholds, bells, badge. */
-  sync(config) {
+  /**
+   * Reflect the settings — checkboxes, thresholds, bells, badge.
+   * @param {object} s  `{ detectors, detectThreshold, detectGroupThresholds }`
+   */
+  sync(s) {
+    const config = s.detectors;
     let on = 0;
+    showThreshold(this.global, resolveThreshold({ id: '', group: '' }, { ...s, detectGroupThresholds: {} }));
     for (const [id, row] of this.rows) {
       const c = config[id] || {};
-      const threshold = Number.isFinite(c.threshold) ? c.threshold : row.def.threshold;
+      const threshold = resolveThreshold(row.def, s);
       row.box.checked = Boolean(c.on);
       row.el.classList.toggle('is-off', !c.on);
       if (Number(row.slider.value) !== threshold) row.slider.value = String(threshold);
@@ -202,6 +252,7 @@ export class DetectMenu {
       if (c.on) on++;
     }
     for (const g of this.groups.values()) {
+      showThreshold(g.all, resolveThreshold({ id: '', group: g.name }, { ...s, detectors: {} }));
       g.on = g.ids.filter((id) => config[id]?.on).length;
       g.box.checked = g.on === g.ids.length;
       g.box.indeterminate = g.on > 0 && g.on < g.ids.length;

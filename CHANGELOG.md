@@ -8,6 +8,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Detection thresholds for everything and for a category** — a slider at the
+  top of the Detect menu sets how sure the classifier must be for every sound,
+  and each category has its own under its heading; a sound's own slider still
+  wins for that sound. Moving a wider slider resets the narrower ones. They
+  are saved per session and start at 80%.
+
 - **Sound detection** — a Detect menu that turns the analyzer from "show me
   what is there" into "tell me when *that* happens". Switch a sound on and
   every time it is heard it is logged, labelled on the waterfall at the row it

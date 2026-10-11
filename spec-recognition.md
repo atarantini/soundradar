@@ -63,6 +63,9 @@ record lives once, in `DetectionEngine`:
   mute and "Disable all alarms" apply unchanged, as this spec required.
 - **Configuration** — `settings.detectors`, `{ [id]: { on, alarm,
   threshold? } }`, so it is per session and travels in the JSON export.
+- **Thresholds** — three sliders, narrowest first: the detector's own, its
+  category's (`detectGroupThresholds`), and a global one (`detectThreshold`,
+  default 80%). Moving a wider slider clears the narrower ones it covers.
 
 Two inputs, named by a detector's `source`:
 

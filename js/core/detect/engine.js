@@ -62,8 +62,11 @@ export class DetectionEngine {
   /**
    * Match the running set to a `settings.detectors` map. Detectors keep their
    * state across a threshold change; switching one off closes its event.
+   * @param {object} config  `settings.detectors`
+   * @param {(def:object)=>number} [thresholdFor] the effective threshold of a
+   *   detector; by default its own setting, else the catalog's
    */
-  configure(config = {}) {
+  configure(config = {}, thresholdFor = (def) => (Number.isFinite(config[def.id]?.threshold) ? config[def.id].threshold : def.threshold)) {
     const wanted = new Set();
     for (const def of this.catalog) {
       const c = config[def.id];
@@ -80,7 +83,7 @@ export class DetectionEngine {
         };
         this.slots.set(def.id, slot);
       }
-      slot.trigger.threshold = Number.isFinite(c.threshold) ? c.threshold : def.threshold;
+      slot.trigger.threshold = thresholdFor(def);
     }
     for (const [id, slot] of this.slots) {
       if (wanted.has(id)) continue;
