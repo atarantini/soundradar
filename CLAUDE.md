@@ -92,7 +92,7 @@ not applied on import.
 3. Advances the waterfall (throttled internally against the selected history span, independent of the frame rate).
 4. Redraws the transparent overlay canvases (crosshair, marker bands, zoom-select rectangle) on top of each plate.
 5. Sounds any armed marker alarms whose band has crossed its trigger level, and feeds the spectrum-based detectors (or closes every open detection when capture is not live).
-6. Redraws the ruler and updates the summary strip, input VU, and each marker's live level/trend in the report.
+6. Redraws the ruler and updates the input VU (in the spectrum plate's upper right), and each marker's live level/trend in the report.
 
 The readout in step 6 is throttled to 10 Hz, but a frame drawn only because
 something changed (`needsIdleDraw`) forces it: that frame may be the last one

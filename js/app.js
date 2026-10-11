@@ -280,7 +280,6 @@ function syncControls() {
   muteBtn.textContent = s.alarmMuted ? 'Alarms muted' : 'Mute alarms';
 
   fieldView.classList.toggle('no-waterfall', !s.waterfallOn);
-  $('roBin').textContent = engine.running ? `${engine.binHz.toFixed(1)} Hz` : '—';
   $('binHint').textContent = engine.running
     ? `At ${s.fftSize} points and ${(engine.sampleRate / 1000).toFixed(1)} kHz, each bin covers ${engine.binHz.toFixed(1)} Hz.`
     : 'Larger FFT sizes resolve closer frequencies but react more slowly.';
@@ -1136,17 +1135,6 @@ function updateReadout(now, force) {
   if (!force && now - lastReadoutAt < 100) return;
   lastReadoutAt = now;
 
-  if (dominant) {
-    const khz = dominant.freq >= 1000;
-    $('peakFreq').textContent = khz ? (dominant.freq / 1000).toFixed(3) : dominant.freq.toFixed(1);
-    $('peakUnit').textContent = khz ? 'kHz' : 'Hz';
-    $('peakLevel').textContent = `${dominant.db.toFixed(1)} dB`;
-  } else {
-    $('peakFreq').textContent = '—';
-    $('peakUnit').textContent = '';
-    $('peakLevel').textContent = '—';
-  }
-  $('roBin').textContent = engine.running ? `${engine.binHz.toFixed(1)} Hz` : '—';
 
   const levels = engine.getLevels();
   const vu = $('vuFill').parentElement;

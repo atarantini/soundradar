@@ -9,8 +9,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - The spectrum plate is shorter (about a quarter of the plates' height, was
-  over a third), leaving more room for the waterfall. The loudest peak is now
+  over a third), leaving more room for the waterfall. The "Loudest frequency",
+  "Level" and "Resolution" readouts, and with them the summary strip, are gone: the loudest peak is now
   marked in amber on the spectrum itself, with its frequency and level.
+  The input device picker moved from Display into a new **Source** menu, whose
+  badge names the device in use, and the input level meter now sits in the
+  spectrum plate's upper right.
 
 ### Added
 

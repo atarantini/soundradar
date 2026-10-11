@@ -42,6 +42,16 @@
       </div>
     </details>
 
+    <details class="menu" id="menuSource">
+      <summary>Source <b class="menu-badge" id="statusDevice">Not started</b></summary>
+      <div class="menu-panel">
+        <label class="field field-row"><span class="tag">Input</span>
+          <select id="deviceSelect"><option value="">System default</option></select>
+        </label>
+        <p class="hint">Where the sound comes from. Changing it while listening switches over at once.</p>
+      </div>
+    </details>
+
     <details class="menu" id="menuSpan">
       <summary>Span</summary>
       <div class="menu-panel">
@@ -167,28 +177,16 @@
   </button>
 </header>
 
-<!-- ══ Summary strip ══ -->
-<section class="summary" aria-label="Current reading">
-  <div class="sum sum-peak">
-    <span class="tag">Loudest frequency</span>
-    <p class="sum-big"><span id="peakFreq">—</span><i id="peakUnit"></i></p>
-  </div>
-  <div class="sum"><span class="tag">Level</span><p class="sum-val" id="peakLevel">—</p></div>
-  <div class="sum"><span class="tag">Resolution</span><p class="sum-val" id="roBin">—</p></div>
-  <div class="sum sum-input">
-    <span class="tag">Input level</span>
-    <div class="vu"><div class="vu-fill" id="vuFill"></div><div class="vu-peak" id="vuPeak"></div></div>
-    <p class="sum-val sum-val-sm" id="vuLabel">—</p>
-  </div>
-  <div class="sum sum-device"><span class="tag">Source</span><p class="sum-val sum-val-sm" id="statusDevice">Not started</p></div>
-</section>
-
 <!-- ══ Plates + ruler ══ -->
 <main class="field-view" id="fieldView">
   <div class="plate" id="spectrumPlot">
     <canvas id="spectrumCanvas"></canvas>
     <canvas id="spectrumOverlay" class="overlay"></canvas>
-    <span class="plate-tag">Spectrum</span>
+    <div class="plate-hud">
+      <span class="vu-label" id="vuLabel">—</span>
+      <div class="vu" title="Input level"><div class="vu-fill" id="vuFill"></div><div class="vu-peak" id="vuPeak"></div></div>
+      <span class="plate-tag">Spectrum</span>
+    </div>
   </div>
 
   <!-- The ruler is the signature of this layout: one shared frequency axis that
