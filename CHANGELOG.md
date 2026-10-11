@@ -28,7 +28,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **Teach it your own sound** — *Teach a sound…* in the Detect menu records a
+- **Teach it your own sound** — *Teach a sound…* in the Detection menu records a
   sound of yours while it is happening: the heat pump, the gate, your dog.
   From then on it is listed under **My sounds** and detected, logged,
   labelled on the waterfall, clipped and chimed like any built-in sound, with
@@ -61,12 +61,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   layout. Saved per session.
 
 - **Detection thresholds for everything and for a category** — a slider at the
-  top of the Detect menu sets how sure the classifier must be for every sound,
+  top of the Detection menu sets how sure the classifier must be for every sound,
   and each category has its own under its heading; a sound's own slider still
   wins for that sound. Moving a wider slider resets the narrower ones. They
   are saved per session and start at 80%.
 
-- **Sound detection** — a Detect menu that turns the analyzer from "show me
+- **Sound detection** — a Detection menu that turns the analyzer from "show me
   what is there" into "tell me when *that* happens". Switch a sound on and
   every time it is heard it is logged, labelled on the waterfall at the row it
   was heard in, and optionally announced with a chime.
@@ -103,13 +103,13 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - Adding a sound is one catalog entry: a `yamnetCategory` listing AudioSet
     classes, or a rule module scored from the spectrum.
 
-- **Natural sounds and Environment and background** categories in the Detect
+- **Natural sounds and Environment and background** categories in the Detection
   menu, plus **Music** under People. Natural sounds: wind, rain, thunder,
   running water, fire. Environment and background: noise, mains hum,
   television / radio. Thresholds are first guesses, not yet tuned against
   recordings.
 
-- **More sounds to detect**, grouped in the Detect menu as Animals, People,
+- **More sounds to detect**, grouped in the Detection menu as Animals, People,
   Home and Street:
   - *People:* **Speech** (talking, conversation, whispering, crowd chatter),
     **Shouting / screaming**, **Crying** (including a baby's) and
@@ -122,7 +122,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     often heard as a power tool and missed.)
   - Class lists and thresholds were set against real recordings, so each
     category fires on its own sounds and stays below threshold on the rest.
-- **Categories you can switch as a whole.** The Detect menu now lists every
+- **Categories you can switch as a whole.** The Detection menu now lists every
   detector by category — the instant pattern rules included, marked as such —
   and each category heading is its switch: tick it to turn on everything in
   it, untick to turn it all off, half-ticked when only some are on.
@@ -181,7 +181,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   phone a menu now opens as a sheet across the screen under the toolbar, and
   a long one scrolls inside itself.
 - **Toolbar on tablets.** Between 620px and 900px the toolbar no longer fits
-  one row (adding the Detect menu made that range wider still), which pushed
+  one row (adding the Detection menu made that range wider still), which pushed
   the page past the screen. The menus now take a row of their own there, and
   their panels open from that row's right edge, so they never run off-screen.
 - **Space on a focused button.** The start/pause shortcut swallowed Space

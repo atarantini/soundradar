@@ -757,7 +757,7 @@ input[type="checkbox"] {
 @keyframes alarm-pulse { 50% { opacity: 0.4; } }
 .cell-trigger { width: 4.3rem; }
 
-/* ---------- Detect menu ---------- */
+/* ---------- Detection menu ---------- */
 
 /* The one menu with a list in it: wider, and scrolling inside itself rather
    than running off the bottom of a tablet held in landscape. */

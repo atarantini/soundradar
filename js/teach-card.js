@@ -1,5 +1,5 @@
 // The teach card: where a sound of the user's own is recorded, named, given
-// more examples, and deleted. It opens inside the Detect menu's My sounds group.
+// more examples, and deleted. It opens inside the Detection menu's My sounds group.
 //
 // One recording is one example. Record is a toggle — tap to start, tap to stop
 // — because holding a button down is unreliable on a touch screen while the

@@ -37,7 +37,7 @@ export const BASE_DEFAULTS = {
   // Keep a short audio clip of each detection, in memory only. Off by default:
   // it is the one feature that holds on to sound.
   detectClips: false,
-  // Detect menu categories folded away (names from GROUPS). View state, but
+  // Detection menu categories folded away (names from GROUPS). View state, but
   // per session like the rest of the menu, so it survives a reload.
   detectCollapsed: [],
   // Height of the plates as a fraction of the window, once the user has dragged

@@ -435,7 +435,7 @@ $('alarmMuted').addEventListener('change', (e) => settings.set({ alarmMuted: e.t
 $('alarmMuteToggle').addEventListener('click', () => settings.set({ alarmMuted: !settings.v.alarmMuted }, []));
 
 // Muting is a stop button; this is the off switch. Nothing to confirm — the
-// bells are still in the report and the Detect menu, one click each from
+// bells are still in the report and the Detection menu, one click each from
 // being armed again. It covers detector bells too: one switch for every alarm.
 $('alarmDisableAll').addEventListener('click', () => {
   const markersOff = markers.disableAllAlarms();

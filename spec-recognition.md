@@ -39,10 +39,9 @@ Questions 1–3 preserve the project's zero-install promise completely. Question
 > user-taught templates remain the next step and slot into the same catalog.
 >
 > **Status (learned sounds, implemented).** The embedding hybrid below ships
-> as *Teach a sound…* in the Detect menu: the user records a sound, and it
+> as *Teach a sound…* in the Detection menu: the user records a sound, and it
 > becomes a catalog entry (`source: 'learned'`, the **My sounds** group) built
-> at runtime from a per-session `SoundStore`. See `plan-learned-sounds.md` for
-> the measurements behind the choices recorded under the hybrid.
+> at runtime from a per-session `SoundStore`.
 
 ## Detector modules
 
@@ -417,8 +416,7 @@ If Tier 3 ships at all, this is the reason to ship it. "Name that sound" is a
 party trick; "teach it *my* sound and be robust about it" is the tool.
 
 **As built** (learned sounds, `js/core/detect/learned.js`), three choices
-differ from the sketch above, each measured offline on 33 recordings
-(`plan-learned-sounds.md`):
+differ from the sketch above, each measured offline on 33 recordings:
 
 - **Centred.** YAMNet's embeddings are never negative, so unrelated sounds
   already share a median cosine similarity of 0.32 (up to 0.82). Similarity is

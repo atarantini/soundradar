@@ -10,7 +10,7 @@
 // Matching every example window, not an average of them, keeps every mode of
 // the sound (a bark and a whine) and every condition it was recorded in. It
 // finds *that* sound again — the heat pump, the gate — far better than it
-// generalises to everything of its kind; see plan-learned-sounds.md.
+// generalises to everything of its kind.
 
 export const LEARNED_SOURCE = 'learned';
 export const LEARNED_GROUP = 'My sounds';

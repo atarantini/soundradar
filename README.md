@@ -57,7 +57,7 @@ bucket. All paths are relative, so serving it from a subdirectory works.
   Mute silences every alarm without disarming anything; "Disable all alarms"
   switches them all off. (Headphones — over speakers the beep feeds back into
   the microphone.)
-- **Sound detection** — switch on the sounds you care about in the Detect
+- **Sound detection** — switch on the sounds you care about in the Detection
   menu and every time one is heard it is logged, labelled on the waterfall at
   the moment it happened, and (optionally) announced with a chime. Two kinds
   of detector, side by side:
@@ -74,7 +74,7 @@ bucket. All paths are relative, so serving it from a subdirectory works.
     The people detectors notice *that* someone is talking, shouting, crying
     or laughing — nothing transcribes or identifies anyone.
 
-  The Detect menu lists everything by category — Animals, People, Home,
+  The Detection menu lists everything by category — Animals, People, Home,
   Street, with the pattern rules inside their category — and each category's
   heading switches the whole category on or off; its ▾ folds the category
   away, and a folded heading lights up while one of its sounds is heard.
@@ -88,7 +88,7 @@ bucket. All paths are relative, so serving it from a subdirectory works.
   checking what actually set a detector off. Adding a new sound is one catalog entry (see `CLAUDE.md`).
   Crashes are the weakest category: YAMNet tends to hear a small glass break
   as chimes or birdsong.
-- **Teach it your own sound** — *Teach a sound…* in the Detect menu records a
+- **Teach it your own sound** — *Teach a sound…* in the Detection menu records a
   sound of yours (the heat pump, the gate, your dog) while it is happening,
   and from then on it is detected, logged, labelled and chimed like any other.
   Record it a few times for a sturdier match. Nothing is trained: it keeps
@@ -185,7 +185,7 @@ models/yamnet/        the YAMNet model weights and class map
 tools/                Node scripts: regenerate the learned-sound centre, inspect a learned sound
 js/ruler.js           the shared frequency ruler between the plates
 js/markers-table.js   the marker report table
-js/detect-menu.js     the Detect menu: detector toggles, meters, thresholds
+js/detect-menu.js     the Detection menu: detector toggles, meters, thresholds
 js/teach-card.js      teaching a sound of your own: record, name, edit
 js/detections-table.js the detection log
 js/theme.js           reads canvas colours out of the stylesheet

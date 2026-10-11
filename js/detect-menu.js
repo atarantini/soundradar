@@ -1,4 +1,4 @@
-// The Detect menu: the detectors of the catalog, listed by category, plus the
+// The Detection menu: the detectors of the catalog, listed by category, plus the
 // classifier's model card.
 //
 // Each category heading is also its on/off switch: ticked when every detector

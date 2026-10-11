@@ -60,7 +60,7 @@ desde un subdirectorio funciona.
   la pantalla. Silenciar apaga todas las alarmas sin desarmarlas;
   "Disable all alarms" las apaga a todas. (Usá auriculares — con parlantes
   el sonido retroalimenta al micrófono.)
-- **Detección de sonidos** — activá en el menú Detect los sonidos que te
+- **Detección de sonidos** — activá en el menú Detección los sonidos que te
   interesan y cada vez que se escucha uno queda registrado, marcado en la
   cascada en el momento en que ocurrió y (si querés) anunciado con un
   campanazo. Dos tipos de detector, lado a lado:
@@ -78,7 +78,7 @@ desde un subdirectorio funciona.
     notan *que* alguien habla, grita, llora o se ríe — nada transcribe ni
     identifica a nadie.
 
-  El menú Detect lista todo por categoría — Animales, Personas, Casa, Calle,
+  El menú Detección lista todo por categoría — Animales, Personas, Casa, Calle,
   con las reglas de patrón dentro de su categoría — y el encabezado de cada
   categoría la activa o desactiva entera; su ▾ la pliega, y un encabezado
   plegado se ilumina mientras se oye uno de sus sonidos.
@@ -93,7 +93,7 @@ desde un subdirectorio funciona.
   disparó realmente un detector. Agregar un sonido nuevo es una entrada en el catálogo
   (ver `CLAUDE.md`). Los choques son la categoría más débil: YAMNet tiende a
   oír la rotura de un vidrio chico como campanitas o pájaros.
-- **Enseñale tu propio sonido** — *Teach a sound…* en el menú Detect graba un
+- **Enseñale tu propio sonido** — *Teach a sound…* en el menú Detección graba un
   sonido tuyo (la bomba de calor, el portón, tu perro) mientras está sonando,
   y desde ahí se detecta, registra, etiqueta y avisa como cualquier otro.
   Grabalo varias veces para que reconozca mejor. No se entrena nada: guarda el
@@ -197,7 +197,7 @@ models/yamnet/        los pesos del modelo YAMNet y su mapa de clases
 tools/                scripts de Node: regenerar el centro de los sonidos aprendidos, inspeccionar uno
 js/ruler.js           la regla de frecuencia compartida entre las placas
 js/markers-table.js   la tabla de informe de marcadores
-js/detect-menu.js     el menú Detect: detectores, medidores, umbrales
+js/detect-menu.js     el menú Detección: detectores, medidores, umbrales
 js/teach-card.js      enseñar un sonido propio: grabar, nombrar, editar
 js/detections-table.js el registro de detecciones
 js/theme.js           lee los colores del canvas desde la hoja de estilos

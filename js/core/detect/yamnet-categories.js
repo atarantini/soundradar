@@ -48,8 +48,8 @@ export function yamnetCategory({
   });
 }
 
-// Menu order. Thresholds and class lists were set against real recordings
-// (see plan-detection.md): each category fires on its own clips and stays
+// Menu order. Thresholds and class lists were set against real recordings:
+// each category fires on its own clips and stays
 // below its threshold on everything else in the test set.
 export const YAMNET_CATEGORIES = [
   // ---- Animals
