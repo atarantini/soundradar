@@ -245,6 +245,7 @@ const nyq = () => (engine.running ? engine.nyquist : 24000);
 
 function syncControls() {
   const s = settings.v;
+  applySplit(s.platesSplit);
   const top = nyq();
   $('minFreq').value = String(freqToSlider(s.minFreq, top));
   $('maxFreq').value = String(freqToSlider(s.maxFreq, top));
@@ -567,6 +568,60 @@ $('reportToggle').addEventListener('click', () => {
   $('reportToggle').setAttribute('aria-expanded', String(!collapsed));
   requestAnimationFrame(layout);
 });
+
+// ---------- plates / reports splitter ----------
+
+const MIN_PLATES_PX = 112;
+const MIN_REPORTS_PX = 96;
+
+function clampPlatesPx(px) {
+  const max = window.innerHeight - document.querySelector('.bar').offsetHeight - MIN_REPORTS_PX;
+  return clamp(px, MIN_PLATES_PX, Math.max(MIN_PLATES_PX, max));
+}
+
+function setPlatesPx(px) {
+  document.body.classList.add('is-split');
+  document.documentElement.style.setProperty('--plates-h', `${Math.round(clampPlatesPx(px))}px`);
+}
+
+/** @param {number} frac plates height as a fraction of the window; 0 = automatic */
+function applySplit(frac) {
+  if (!(frac > 0)) {
+    document.body.classList.remove('is-split');
+    return;
+  }
+  setPlatesPx(frac * window.innerHeight);
+}
+
+const splitter = $('splitter');
+let splitDrag = null;
+splitter.addEventListener('pointerdown', (e) => {
+  if (e.button > 0) return;
+  e.preventDefault();
+  splitter.setPointerCapture(e.pointerId);
+  splitter.classList.add('is-dragging');
+  splitDrag = { y: e.clientY, h: fieldView.getBoundingClientRect().height };
+});
+splitter.addEventListener('pointermove', (e) => {
+  if (splitDrag) setPlatesPx(splitDrag.h + e.clientY - splitDrag.y);
+});
+const endSplitDrag = () => {
+  if (!splitDrag) return;
+  splitDrag = null;
+  splitter.classList.remove('is-dragging');
+  settings.set({ platesSplit: fieldView.getBoundingClientRect().height / window.innerHeight }, []);
+};
+splitter.addEventListener('pointerup', endSplitDrag);
+splitter.addEventListener('pointercancel', endSplitDrag);
+splitter.addEventListener('dblclick', () => settings.set({ platesSplit: 0 }, []));
+splitter.addEventListener('keydown', (e) => {
+  const dir = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
+  if (!dir) return;
+  e.preventDefault();
+  const h = fieldView.getBoundingClientRect().height + dir * 24;
+  settings.set({ platesSplit: clampPlatesPx(h) / window.innerHeight }, []);
+});
+window.addEventListener('resize', () => applySplit(settings.v.platesSplit));
 
 // ---------- detection ----------
 

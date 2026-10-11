@@ -136,9 +136,6 @@
         <button class="btn btn-block" id="alarmDisableAll" type="button">Disable all alarms</button>
         <p class="hint">Arm the alarm on a marker in the report, and it beeps whenever that band reaches its level &mdash; higher and faster the louder it gets, so you can find a source by ear. A sound detector's bell (in Detect) chimes once per detection instead. Muting silences every alarm but leaves it armed; disabling switches them all off. Wear headphones: over speakers the beep feeds back into the microphone.</p>
         <hr class="menu-rule">
-        <label class="field field-row"><span class="tag">Input</span>
-          <select id="deviceSelect"><option value="">System default</option></select>
-        </label>
         <button class="btn btn-block" id="savePng" type="button">Save view as PNG</button>
         <button class="btn btn-block" id="resetAll" type="button">Reset all settings</button>
       </div>
@@ -221,6 +218,11 @@
     </div>
   </div>
 </main>
+
+<!-- Drag to give the plates or the reports more of the screen; double-click to
+     put it back. -->
+<div class="splitter" id="splitter" role="separator" aria-orientation="horizontal" tabindex="0"
+     aria-label="Resize the plots against the reports" title="Drag to resize · double-click to reset"></div>
 
 <!-- ══ Marker report ══ -->
 <section class="report" id="report">

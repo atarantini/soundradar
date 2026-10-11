@@ -40,6 +40,9 @@ export const BASE_DEFAULTS = {
   // Detect menu categories folded away (names from GROUPS). View state, but
   // per session like the rest of the menu, so it survives a reload.
   detectCollapsed: [],
+  // Height of the plates as a fraction of the window, once the user has dragged
+  // the splitter under them. 0 leaves the layout to the stylesheet.
+  platesSplit: 0,
 };
 
 export const WATERFALL_SPANS = [5, 10, 20, 30, 60, 120];
@@ -114,6 +117,8 @@ export function normalize(s, nyquist = 24000) {
   s.detectThreshold = clamp(Number.isFinite(dt) ? dt : BASE_DEFAULTS.detectThreshold, 0.05, 0.95);
   s.detectGroupThresholds = normalizeGroupThresholds(s.detectGroupThresholds);
   s.detectClips = Boolean(s.detectClips);
+  const split = Number(s.platesSplit);
+  s.platesSplit = Number.isFinite(split) && split > 0 ? clamp(split, 0.15, 0.9) : 0;
   s.detectCollapsed = Array.isArray(s.detectCollapsed)
     ? [...new Set(s.detectCollapsed.filter((g) => typeof g === 'string' && g.length <= 40))].slice(0, 16)
     : [];

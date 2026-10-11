@@ -22,6 +22,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Resizable plots and reports** — drag the bar between the plots and the
+  markers / detections reports to give either more room (touch works too;
+  arrow keys when it has focus). Double-click it to go back to the automatic
+  layout. Saved per session.
+
 - **Detection thresholds for everything and for a category** — a slider at the
   top of the Detect menu sets how sure the classifier must be for every sound,
   and each category has its own under its heading; a sound's own slider still

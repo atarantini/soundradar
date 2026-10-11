@@ -434,6 +434,41 @@ button, input, select, output, table { font: inherit; color: inherit; }
   text-wrap: pretty;
 }
 
+/* ---------- Plates / reports splitter ---------- */
+
+/* Straddles the boundary without taking any room of its own. */
+.splitter {
+  flex: 0 0 0;
+  position: relative;
+  z-index: 40;
+  cursor: row-resize;
+  touch-action: none;
+}
+.splitter::before { content: ""; position: absolute; left: 0; right: 0; top: -0.55rem; height: 1.1rem; }
+.splitter::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: -2px;
+  width: 2.75rem; height: 4px;
+  transform: translateX(-50%);
+  background: var(--rule-2);
+  opacity: 0.7;
+}
+.splitter:hover::after, .splitter:focus-visible::after, .splitter.is-dragging::after {
+  background: var(--accent);
+  opacity: 1;
+}
+
+/* Once sized, the plates keep exactly the height chosen and the reports share
+   what is left, uncapped. */
+body.is-split .field-view { flex: 0 0 var(--plates-h); min-height: 0; }
+body.is-split .report { flex: 1 1 0; }
+body.is-split .report.collapsed { flex: 0 0 auto; }
+body.is-split .report-body { max-height: none; }
+/* With no report on screen there is nothing to give the room to. */
+body:not(:has(.report:not([hidden]))) .splitter { display: none; }
+body.is-split:not(:has(.report:not([hidden]))) .field-view { flex: 1 1 auto; }
+
 /* ---------- Report table ---------- */
 
 /* Reports shrink before the plates do (down to their header, which keeps
