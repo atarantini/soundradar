@@ -7,7 +7,6 @@
 // a column by name.
 
 import { formatFreq } from './core/util.js';
-import { SOURCE_LABELS } from './core/detect/catalog.js';
 
 const MAX_ROWS = 200; // the log keeps more; the CSV has all of it
 
@@ -101,8 +100,6 @@ export class DetectionsTable {
 
     const dur = cell('num-cell col-dur');
     const hz = cell('num-cell col-hz');
-    const source = cell('col-source');
-    source.textContent = SOURCE_LABELS[entry.source] || entry.source;
 
     const actions = cell('row-actions col-actions');
     const what = `${entry.label} at ${clock.textContent}`;
@@ -124,7 +121,7 @@ export class DetectionsTable {
     remove.addEventListener('click', () => this.onRemove?.(entry.id));
     actions.append(rec, play, save, remove);
 
-    tr.append(when, sound, conf, dur, hz, source, actions);
+    tr.append(when, sound, conf, dur, hz, actions);
     this.bodyEl.prepend(tr);
     const row = { entry, tr, ago, detail, fill, confText, dur, hz, rec, play, save, what, last: {} };
     this.rows.set(entry.id, row);

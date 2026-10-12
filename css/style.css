@@ -1014,7 +1014,6 @@ input[type="checkbox"] {
   /* The two widest, most decorative columns go first: the numbers they
      illustrate are still in the row. */
   .report-table .col-meter, .report-table .col-trend { display: none; }
-  .report-table .col-source { display: none; }
 }
 
 @media (max-width: 620px) {
