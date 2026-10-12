@@ -332,9 +332,6 @@ function syncControls() {
   muteBtn.textContent = s.alarmMuted ? 'Alarms muted' : 'Mute alarms';
 
   fieldView.classList.toggle('no-waterfall', !s.waterfallOn);
-  $('binHint').textContent = engine.running
-    ? `At ${s.fftSize} points and ${(engine.sampleRate / 1000).toFixed(1)} kHz, each bin covers ${engine.binHz.toFixed(1)} Hz.`
-    : 'Larger FFT sizes resolve closer frequencies but react more slowly.';
 }
 
 settings.subscribe((s, tags) => {
