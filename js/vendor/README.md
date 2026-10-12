@@ -12,3 +12,11 @@ reference only produced 404s.
 
 Loaded only by `js/core/detect/yamnet-worker.js`, and only once a YAMNet
 category is switched on in the Detect menu.
+
+# Vendored: mqtt.js
+
+`mqtt.esm.js` is the browser ES-module build of [`mqtt`](https://github.com/mqttjs/MQTT.js)
+**5.16.0** (`dist/mqtt.esm.js` in the npm package), self-contained, default export
+with `connect()`. Licence: MIT, in `mqtt.LICENSE.md`. Loaded only by
+`js/app.js` via a dynamic import, and only when `js/config.local.js` enables
+MQTT publishing.

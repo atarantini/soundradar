@@ -26,6 +26,8 @@ js/core/              DOM-free analysis/rendering modules (reusable across inter
 js/core/sessions.js   named save states (settings + markers + learned sounds) and whole-store export/import
 js/core/alarm.js      the marker alarm / "finder" tone, and the detection chime
 js/core/detect/       sound detection: catalog, engine, trigger, log, rules/, YAMNet, learned sounds
+js/core/publish.js    opt-in MQTT publishing of detection events + heartbeat (config-enabled)
+js/config.js          deployment config; MQTT off here, js/config.local.js (gitignored) overrides
 js/core/capture.js    AudioWorklet tap streaming raw samples (+ capture-worklet.js)
 js/core/resample.js   streaming any-rate → any-rate resampler (worker-safe)
 js/core/features.js   Tier 0 spectral descriptors shared by the rules
@@ -35,7 +37,7 @@ js/detect-menu.js     the Detection menu (toggles, meters, thresholds, model car
 js/teach-card.js      the teach card: record, name, edit and delete a learned sound
 js/detections-table.js the detection log report
 js/theme.js           reads canvas colours out of the stylesheet
-js/vendor/            TensorFlow.js 4.22.0, flat ESM build (Apache-2.0)
+js/vendor/            TensorFlow.js 4.22.0, flat ESM build (Apache-2.0); mqtt.js 5.16.0 browser ESM (MIT)
 models/yamnet/        YAMNet TF.js graph model + class map (Apache-2.0)
 tools/yamnet-centre.mjs  Node script that regenerates js/core/detect/yamnet-centre.js
 tools/inspect-sound.mjs  Node script that reports on an exported learned sound, and can clean it
@@ -163,6 +165,12 @@ A learned sound travels as a file (`sound-file.js`, Edit → Export / My sounds 
 
 Detector configuration is `settings.detectors` — `{ [id]: { on, alarm, threshold? } }`, validated in `normalize()` — so it is per session, travels in the JSON export and resets with "Reset all settings". A detector's threshold is resolved by `resolveThreshold()` (`detect/thresholds.js`): its own `threshold`, else its category's in `settings.detectGroupThresholds`, else the global `settings.detectThreshold` (default 0.8). The catalog's `threshold` is the calibrated value, not read at runtime. The Detection menu's global and per-category sliders overwrite the narrower ones when moved (`setGlobalThreshold`/`setGroupThreshold` in `app.js`). The log is deliberately not saved. A detector's bell plays `AlarmTone.chime()`; mute applies to it, and "Disable all alarms" clears detector bells as well as marker bells.
 
+### Publishing detections (`js/core/publish.js`, `js/config.js`)
+
+Opt-in at the *deployment*, not per user: `js/config.js` ships `mqtt.enabled: false`, and a host turns it on with an untracked `js/config.local.js` (`export default { mqtt: { enabled: true } }`, merged over the defaults; also `url`, `username`/`password`, `topicRoot`, `heartbeatS`). `startPublishing()` in `app.js` imports the local file (a missing one is fine), and only when enabled does it create a `Publisher` and dynamically import `js/vendor/mqtt.esm.js` — so with it off the library is never fetched and nothing connects. There is deliberately no settings switch; a dot beside the session name (hover for the state) shows that the app is publishing.
+
+It subscribes to the `DetectionLog`: `'add'` publishes a `start` record and `'close'` an `end` one (`'remove'`/`'clear'` publish nothing) to `<topicRoot>/<client>/events`, QoS 0, best effort. A retained `<topicRoot>/<client>/status` (QoS 1) carries `online`, the session name and the switched-on detector ids; it is refreshed every `heartbeatS`, on a session switch/rename and (debounced) when detector settings change, and an MQTT last-will flips it to `online:false`. The client id is a random id in `localStorage` (`soundradar.client.v1`) — with the theme, the second thing that is a property of the browser rather than of a session. Records carry session name, `location.host` and the user agent so clients can be told apart. **Metadata only**: detector, label, source, detail, confidence, frequency, start/end — never audio, embeddings or clips. The default broker is the public `wss://broker.emqx.io:8084/mqtt`, which anyone can read; point `url` at a private one for anything sensitive. Record builders (`eventRecord`, `statusRecord`) are pure; the browser facts come in through the `identity()` callback to keep `core/` DOM-free.
+
 ### Input handling (`js/core/input.js`)
 
 `PlotInput` covers mouse, touch, and pen through pointer events on one path. The full gesture vocabulary: drag to pan, wheel/pinch to zoom around the pointer, shift-drag to select a range to zoom into, double click/tap or long press to plant a marker, drag a pin to move it. Callbacks receive canvas-pixel coordinates; frequency math stays in `scale.js`. `zoomRange`/`panRange` are the pure range transforms, shared with the keyboard and the on-screen zoom/pan pad.
@@ -190,7 +198,7 @@ Canvas colours are read out of CSS custom properties via `cssVar()` so a colour 
 - Anything that must survive a reload belongs to a session, not to a new
   top-level `localStorage` key. The theme is the one deliberate exception: it is
   a property of the browser, not of a measurement.
-- A new detectable sound is a catalog entry in `js/core/detect/`, never a special case in `app.js`. Detectors stay DOM-free, and recognition stays local: nothing may send audio, features or results off the device (`spec-recognition.md`).
+- A new detectable sound is a catalog entry in `js/core/detect/`, never a special case in `app.js`. Detectors stay DOM-free, and recognition stays local: nothing may send audio or features off the device, and results only through the deployment-enabled publisher above (`spec-recognition.md`).
 - `js/core/detect/yamnet-classes.js` is generated from `models/yamnet/yamnet_class_map.csv` — regenerate it rather than editing it, or indices drift from the model.
 - A sound the user teaches is data in `SoundStore`, never code, and its examples stay embeddings: never keep the audio of a learned sound.
 - `SPEC.md`, `spec-spectrum-analyzer.md` and `spec-recognition.md` are the source of design intent (goals, planned tools, interaction details) — check them before making product/UX decisions, and update them if a change alters documented behaviour.

@@ -17,3 +17,6 @@ TODO.md
 *.local.md
 soundradar-*.png
 soundradar-*.csv
+
+# config.local.js overrides js/config.js on this machine; see js/config.js
+js/config.local.js
