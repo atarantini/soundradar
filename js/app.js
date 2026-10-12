@@ -18,6 +18,8 @@ import { RELEASE_RATIO } from './core/detect/trigger.js';
 import { resolveThreshold, groupOf } from './core/detect/thresholds.js';
 import { DetectionEngine, SPECTRUM_INPUT } from './core/detect/engine.js';
 import { DetectionLog } from './core/detect/log.js';
+import { Publisher } from './core/publish.js';
+import baseConfig from './config.js';
 import { ClipRecorder } from './core/detect/clips.js';
 import { YamnetClassifier } from './core/detect/yamnet.js';
 import { SpectrumView } from './core/spectrum.js';
@@ -129,6 +131,8 @@ const teach = new TeachSession();
 const history = new WindowHistory();
 let catalog = withLearned(sounds.sounds.map(learnedDetector));
 const detectLog = new DetectionLog();
+// Set up below when js/config(.local).js turns MQTT publishing on; null otherwise.
+let publisher = null;
 const clips = new ClipRecorder({ log: detectLog });
 const clipPlayer = new Audio();
 const detection = new DetectionEngine({ catalog, log: detectLog, onEvent: onDetection });
@@ -328,9 +332,6 @@ function syncControls() {
   muteBtn.textContent = s.alarmMuted ? 'Alarms muted' : 'Mute alarms';
 
   fieldView.classList.toggle('no-waterfall', !s.waterfallOn);
-  $('binHint').textContent = engine.running
-    ? `At ${s.fftSize} points and ${(engine.sampleRate / 1000).toFixed(1)} kHz, each bin covers ${engine.binHz.toFixed(1)} Hz.`
-    : 'Larger FFT sizes resolve closer frequencies but react more slowly.';
 }
 
 settings.subscribe((s, tags) => {
@@ -510,6 +511,7 @@ function renderSessions() {
   for (const s of list) select.append(new Option(s.name, s.id));
   select.value = sessions.activeId;
   $('sessionName').textContent = sessions.active()?.name || '—';
+  publisher?.heartbeat();
   // The roster can never be empty, so the last session cannot be deleted.
   $('sessionDelete').disabled = list.length <= 1;
 }
@@ -871,6 +873,74 @@ detectLog.subscribe((kind) => {
   syncDetectionsPanel();
   needsIdleDraw = true;
 });
+
+// ---------- publishing (opt-in, deployment config only) ----------
+//
+// Off in the repository. A deployment turns it on in js/config.local.js, which
+// is the only way: there is no setting, because it is a property of where the
+// app is hosted. Events and a heartbeat go to one MQTT broker (js/core/publish.js);
+// while it is off the library is never fetched. A dot beside the session name
+// shows that the app is publishing, and its connection state.
+
+const CLIENT_KEY = 'soundradar.client.v1'; // like the theme: a property of the browser, not of a session
+
+function clientId() {
+  try {
+    let id = localStorage.getItem(CLIENT_KEY);
+    if (!id) {
+      id = (crypto.randomUUID?.() || Math.random().toString(16).slice(2) + Date.now().toString(16)).replace(/-/g, '').slice(0, 12);
+      localStorage.setItem(CLIENT_KEY, id);
+    }
+    return id;
+  } catch {
+    return Math.random().toString(16).slice(2, 14);
+  }
+}
+
+async function startPublishing() {
+  let config = baseConfig.mqtt;
+  try {
+    const local = (await import('./config.local.js')).default;
+    config = { ...config, ...(local?.mqtt || {}) };
+  } catch {
+    // No local override: the shipped default stands.
+  }
+  if (!config.enabled) return;
+
+  const dot = document.createElement('span');
+  dot.className = 'publish-dot';
+  dot.textContent = ' ●';
+  $('sessionName').after(dot);
+  const colours = { connected: '#3c3', connecting: '#fb0', reconnecting: '#fb0', offline: '#888', error: '#f44' };
+
+  publisher = new Publisher({
+    config,
+    client: clientId(),
+    load: () => import('./vendor/mqtt.esm.js'),
+    identity: () => ({
+      session: sessions.active()?.name || '',
+      host: location.host,
+      agent: navigator.userAgent,
+      detectors: Object.entries(settings.v.detectors || {}).filter(([, d]) => d.on).map(([id]) => id),
+    }),
+  });
+  publisher.onstate = (status) => {
+    dot.style.color = colours[status] || '#888';
+    dot.title = `Publishing detections to ${config.url}: ${status}${publisher.error ? ` (${publisher.error})` : ''}`;
+  };
+  publisher.onstate(publisher.status);
+  detectLog.subscribe((kind, entry) => {
+    if (kind === 'add') publisher.event('start', entry);
+    else if (kind === 'close') publisher.event('end', entry);
+  });
+  const beat = debounce(() => publisher.heartbeat(), 1000);
+  settings.subscribe((_, tags) => {
+    if (tags.has('detect') || tags.has('all')) beat();
+  });
+  addEventListener('pagehide', () => publisher.stop());
+  publisher.start();
+}
+startPublishing();
 
 // Same guard as the markers report: an overnight log is worth one question.
 $('clearDetections').addEventListener('click', () => {

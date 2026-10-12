@@ -123,7 +123,10 @@ What the first pass taught:
 
 - **Local-only.** No recognition feature may send audio, features, or
   embeddings off the device. A feature that cannot be done locally is not
-  done.
+  done. The one exception is the deployment-only MQTT publisher (see
+  *Publishing detections* in `CLAUDE.md`): off in the repository, it sends
+  detection *records* (what, when, which client), never audio, features,
+  embeddings or clips, and only where the host has switched it on.
 - **The marker is the anchor.** A marker already says *where in frequency* to
   look and already owns an alarm that says *what to do when the level rises*.
   Recognition slots in between: the marker gains a *what to look for*, and a
@@ -550,7 +553,8 @@ is the normal case for unattended monitoring.
 - **YAMNet is Apache-2.0** and carries no such problem.
 - **Nothing leaves the device.** The only network traffic recognition may
   cause is fetching a model file from a static host, at the user's explicit
-  request. This should be stated in the README as a feature, because against
+  request (and, where a deployment has enabled it, the MQTT detection records
+  above). This should be stated in the README as a feature, because against
   every comparable app it is one.
 
 ---
