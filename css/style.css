@@ -7,7 +7,9 @@
    also where markers are planted.
 
    Ultramarine is the instrument mark: axes, selections, the active state. Red is
-   reserved for capture and removal, so it never appears decoratively.
+   reserved for recording (the Record button, teaching a sound, clips) and
+   removal, so it never appears decoratively. Green is the live state: the app
+   is listening.
    ========================================================================== */
 
 :root {
@@ -22,6 +24,7 @@
   --accent:  #2a3fd4;
   --accent-soft: #e0e4fb;
   --flag:    #cf2b21;
+  --live:    #1d8348;
   --plate:   #0c1016;
 
   --shadow-plate: 0 1px 0 rgba(255,255,255,0.7), 0 2px 10px rgba(16,24,32,0.14);
@@ -64,6 +67,7 @@
   --accent:  #7d90ff;
   --accent-soft: #232a4d;
   --flag:    #ff5a4d;
+  --live:    #23a05a;
   --shadow-plate: inset 0 0 0 1px #000, 0 2px 10px rgba(0,0,0,0.5);
   color-scheme: dark;
 }
@@ -155,8 +159,33 @@ button, input, select, output, table { font: inherit; color: inherit; }
 }
 .capture:hover { filter: brightness(1.08); }
 .capture[disabled] { opacity: 0.6; cursor: progress; }
-.capture.is-live { background: var(--flag); }
+.capture.is-live { background: var(--live); }
 .capture.is-paused { background: var(--ink-2); }
+.record {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.1rem;
+  padding: 0 0.85rem;
+  background: var(--flag);
+  color: #fff;
+  border: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.record:hover { filter: brightness(1.08); }
+.record[disabled] { opacity: 0.4; cursor: not-allowed; }
+/* White over red: a round dot to start, a square to stop. */
+.record-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #fff;
+  flex-shrink: 0;
+}
+.record.is-recording .record-dot { border-radius: 1px; animation: blink 1.15s ease-in-out infinite; }
 
 .capture-dot {
   width: 0.55rem;
@@ -801,6 +830,13 @@ input[type="checkbox"] {
 .det-all > span:first-child { white-space: nowrap; min-width: 6.5rem; }
 .det-all input[type="range"] { flex: 1; min-width: 0; }
 .det-all .num { width: auto; }
+.det-all-help { margin: 0 0 0.35rem; }
+.help-btn {
+  width: 1.1rem; height: 1.1rem; padding: 0; margin-left: -0.25rem;
+  border: 1px solid var(--ink-3); border-radius: 50%;
+  background: none; color: var(--ink-2);
+  font-size: 0.65rem; font-weight: 700; line-height: 1; cursor: help;
+}
 .det-group-count { font-size: 0.6875rem; color: var(--ink-3); white-space: nowrap; }
 .det-group-toggle { width: 2rem; height: 2rem; font-size: 0.8rem; }
 /* Folded but sounding: the heading carries the signal its rows cannot. */
@@ -1092,6 +1128,7 @@ input[type="checkbox"] {
     --accent:  #7d90ff;
     --accent-soft: #232a4d;
     --flag:    #ff5a4d;
+  --live:    #23a05a;
     --shadow-plate: inset 0 0 0 1px #000, 0 2px 10px rgba(0,0,0,0.5);
     color-scheme: dark;
   }
@@ -1105,3 +1142,14 @@ input[type="checkbox"] {
   }
   .capture.is-live .capture-dot { opacity: 1; }
 }
+
+/* The My sounds blurb sits under the Teach/Import buttons, not against them. */
+.teach-buttons + .hint, .teach-slot + .hint { padding-top: 0.6rem; }
+
+/* ---------- Recordings menu ---------- */
+.rec-list { display: flex; flex-direction: column; gap: 0.35rem; }
+.rec-row { display: flex; align-items: center; gap: 0.3rem; }
+.rec-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rec-name { font-weight: 600; font-size: 0.8125rem; }
+.rec-meta { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--ink-3); }
+.rec-row .btn { min-width: 2rem; padding: 0 0.5rem; }
