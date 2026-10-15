@@ -198,8 +198,9 @@ Canvas colours are read out of CSS custom properties via `cssVar()` so a colour 
 - The UI is sized for tablet/touch (large hit targets, generous base font — see `css/style.css` `:root`), not a dense desktop panel; collapsible `<details>` toolbar menus keep secondary controls out of the way so the plates get primary screen space.
 - Every interaction must work by touch as well as by mouse — that is why the zoom/pan pad exists alongside the wheel and arrow keys.
 - Anything that must survive a reload belongs to a session, not to a new
-  top-level `localStorage` key. The theme is the one deliberate exception: it is
-  a property of the browser, not of a measurement.
+  top-level `localStorage` key. The theme and the chosen input
+  device (`soundradar.input.v1`) are the deliberate exceptions: they are
+  properties of the browser, not of a measurement.
 - A new detectable sound is a catalog entry in `js/core/detect/`, never a special case in `app.js`. Detectors stay DOM-free, and recognition stays local: nothing may send audio or features off the device, and results only through the deployment-enabled publisher above (`spec-recognition.md`).
 - `js/core/detect/yamnet-classes.js` is generated from `models/yamnet/yamnet_class_map.csv` — regenerate it rather than editing it, or indices drift from the model.
 - A sound the user teaches is data in `SoundStore`, never code, and its examples stay embeddings: never keep the audio of a learned sound.

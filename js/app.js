@@ -1065,11 +1065,21 @@ function paintState() {
 
 engine.onstatechange = paintState;
 
+// The input is a property of this browser's hardware, not of a measurement, so
+// like the theme it is remembered outside the sessions.
+const INPUT_KEY = 'soundradar.input.v1';
+let wantedDevice = '';
+try {
+  wantedDevice = localStorage.getItem(INPUT_KEY) || '';
+} catch {
+  /* storage blocked: the default input, as before */
+}
+
 async function startCapture() {
   $('runBtn').disabled = true;
   $('runLabel').textContent = RUN_LABEL.requesting;
   try {
-    const info = await engine.start($('deviceSelect').value || undefined);
+    const info = await engine.start(wantedDevice || undefined);
     settings.setNyquist(engine.nyquist);
     engine.setFftSize(settings.v.fftSize);
     engine.setSmoothing(settings.v.smoothing);
@@ -1149,6 +1159,13 @@ $('runBtn').addEventListener('click', () => {
 });
 $('curtainBtn').addEventListener('click', startCapture);
 $('deviceSelect').addEventListener('change', () => {
+  wantedDevice = $('deviceSelect').value;
+  try {
+    if (wantedDevice) localStorage.setItem(INPUT_KEY, wantedDevice);
+    else localStorage.removeItem(INPUT_KEY);
+  } catch {
+    /* not remembered */
+  }
   if (engine.running) startCapture();
 });
 
@@ -1156,10 +1173,11 @@ async function refreshDevices() {
   const select = $('deviceSelect');
   try {
     const devices = await engine.listDevices();
-    const current = select.value;
     select.replaceChildren(new Option('System default', ''));
     devices.forEach((d, i) => select.append(new Option(d.label || `Input ${i + 1}`, d.deviceId)));
-    select.value = devices.some((d) => d.deviceId === current) ? current : '';
+    // A remembered input that is unplugged shows as the default (which is what
+    // the engine fell back to) but stays wanted for when it returns.
+    select.value = devices.some((d) => d.deviceId === wantedDevice) ? wantedDevice : '';
   } catch {
     /* enumeration before permission returns blank labels */
   }
