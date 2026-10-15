@@ -26,7 +26,7 @@ import { groupOf, resolveThreshold, MIN_THRESHOLD, MAX_THRESHOLD } from './core/
 import { LEARNED_GROUP } from './core/detect/learned.js';
 
 /** A labelled threshold slider: `{ el, slider, value }`. */
-function thresholdSlider(label, ariaLabel, onInput) {
+function thresholdSlider(label, ariaLabel, onInput, help) {
   const el = document.createElement('label');
   el.className = 'det-all';
   const text = document.createElement('span');
@@ -40,8 +40,27 @@ function thresholdSlider(label, ariaLabel, onInput) {
   slider.addEventListener('input', () => onInput(Number(slider.value)));
   const value = document.createElement('output');
   value.className = 'num';
-  el.append(text, slider, value);
-  return { el, slider, value };
+  el.append(text);
+  if (help) {
+    const q = document.createElement('button');
+    q.type = 'button';
+    q.className = 'help-btn';
+    q.textContent = '?';
+    q.title = help;
+    q.setAttribute('aria-label', `About ${label.toLowerCase()}: ${help}`);
+    // A title never shows on touch, so a tap shows the same text in place.
+    q.addEventListener('click', (e) => {
+      e.preventDefault();
+      note.hidden = !note.hidden;
+    });
+    el.append(q);
+  }
+  el.append(slider, value);
+  const note = document.createElement('p');
+  note.className = 'hint det-all-help';
+  note.textContent = help || '';
+  note.hidden = true;
+  return { el, slider, value, note };
 }
 
 function showThreshold(ctl, t) {
@@ -55,11 +74,12 @@ export class DetectMenu {
    * @param {HTMLElement} o.listEl   container for the categories and their rows
    * @param {HTMLElement} o.badgeEl  count of detectors switched on
    * @param {HTMLElement} o.stateEl  the model card's status line
+   * @param {HTMLElement} [o.enabledEl] says how many detectors are switched on
    * @param {object[]} o.catalog     the built-in detectors, already in category order
    * @param {(id:string)=>string} o.colorOf
    * @param {(id:string, patch:object)=>void} o.onChange
    * @param {(ids:string[], patch:object)=>void} o.onChangeMany  one write for a category
-   * @param {(collapsed:string[])=>void} [o.onCollapse] the user folded or unfolded one
+   * @param {(expanded:string[])=>void} [o.onExpand] the user folded or unfolded one
    * @param {HTMLElement} [o.globalEl]  where the all-detectors threshold slider goes
    * @param {(t:number)=>void} [o.onGlobalThreshold]
    * @param {(group:string, t:number)=>void} [o.onGroupThreshold]
@@ -68,20 +88,28 @@ export class DetectMenu {
    * @param {(id:string)=>void} [o.onEdit] a learned sound's Edit button
    */
   constructor({
-    listEl, badgeEl, stateEl, catalog, colorOf, onChange, onChangeMany, onCollapse,
+    listEl, badgeEl, stateEl, enabledEl, catalog, colorOf, onChange, onChangeMany, onExpand,
     globalEl, onGlobalThreshold, onGroupThreshold, onTeach, onEdit, onImport,
   }) {
     this.badgeEl = badgeEl;
     this.stateEl = stateEl;
+    this.enabledEl = enabledEl;
     this.catalog = catalog;
     this.colorOf = colorOf;
     this.onChange = onChange;
     this.onChangeMany = onChangeMany;
-    this.onCollapse = onCollapse;
+    this.onExpand = onExpand;
     this.onGroupThreshold = onGroupThreshold;
     this.onEdit = onEdit;
-    this.global = thresholdSlider('All sounds', 'Detection threshold for every sound', (t) => onGlobalThreshold?.(t));
-    globalEl?.append(this.global.el);
+    this.global = thresholdSlider(
+      'Global confidence',
+      'Detection threshold for every sound',
+      (t) => onGlobalThreshold?.(t),
+      'How sure a detector must be before it logs a detection, for every sound at once. ' +
+        'Low catches more but also false alarms; high only reports clear matches. ' +
+        'Each category and each sound can override it with its own slider.'
+    );
+    globalEl?.append(this.global.el, this.global.note);
     this.rows = new Map();
     this.groups = new Map(); // name → { head, box, count, toggle, body, ids, on, collapsed }
 
@@ -121,7 +149,7 @@ export class DetectMenu {
     this.learnedHint = document.createElement('p');
     this.learnedHint.className = 'hint';
     this.learnedHint.textContent =
-      'Record a sound of your own — your heat pump, your gate, your dog — and it is listed here and detected like any other.';
+      'Sound detection: record a sound of your own — your heat pump, your gate, your dog — and it is listed here and detected like any other.';
     mine.body.prepend(buttons, this.importMsg, this.teachSlot, this.learnedHint);
     this.teachBtn = teach;
 
@@ -175,14 +203,14 @@ export class DetectMenu {
       (t) => this.onGroupThreshold?.(name, t)
     );
     body.append(all.el);
-    const group = { name, head, box, count, toggle, body, all, ids: [], on: 0, collapsed: false };
+    const group = { name, head, box, count, toggle, body, all, ids: [], on: 0, collapsed: true };
     // An indeterminate box comes back checked from a click: some on → all on.
     box.addEventListener('change', () => this.onChangeMany(group.ids, { on: box.checked }));
     toggle.addEventListener('click', () => {
       this._fold(group, !group.collapsed);
-      this.onCollapse?.(this.collapsed());
+      this.onExpand?.(this.expanded());
     });
-    this._fold(group, false);
+    this._fold(group, true);
     return group;
   }
 
@@ -228,15 +256,15 @@ export class DetectMenu {
     this.learnedHint.hidden = defs.length > 0;
   }
 
-  /** Names of the folded categories, for saving. */
-  collapsed() {
-    return [...this.groups.values()].filter((g) => g.collapsed).map((g) => g.name);
+  /** Names of the unfolded categories, for saving. */
+  expanded() {
+    return [...this.groups.values()].filter((g) => !g.collapsed).map((g) => g.name);
   }
 
-  /** Fold exactly these categories — a session's saved state. */
-  setCollapsed(names = []) {
+  /** Unfold exactly these categories (all others fold) — a session's saved state. */
+  setExpanded(names = []) {
     for (const g of this.groups.values()) {
-      if (g.collapsed !== names.includes(g.name)) this._fold(g, !g.collapsed);
+      if (g.collapsed === names.includes(g.name)) this._fold(g, !g.collapsed);
     }
   }
 
@@ -346,6 +374,11 @@ export class DetectMenu {
       g.box.indeterminate = g.on > 0 && g.on < g.ids.length;
       this._count(g);
     }
+    if (this.enabledEl) {
+      this.enabledEl.textContent = on
+        ? `${on} of ${this.rows.size} detection features enabled`
+        : 'No detection features enabled';
+    }
     this.badgeEl.textContent = String(on);
     this.badgeEl.hidden = on === 0;
   }
@@ -386,7 +419,7 @@ export class DetectMenu {
       const backend = classifier.backend === 'webgl' ? 'GPU' : classifier.backend.toUpperCase();
       el.textContent = listening
         ? `Listening · ${backend}${speed}`
-        : `Ready · ${backend} · start capture to listen`;
+        : `Ready · ${backend} · start listening`;
     } else if (classifier.state === 'error') {
       el.textContent = `Could not run the classifier: ${classifier.error}`;
     } else {

@@ -30,7 +30,7 @@ python3 -m http.server 8080
 npx serve .
 ```
 
-Then open `http://localhost:8080/` and press **Start capture**.
+Then open `http://localhost:8080/` and press **Start listening**.
 
 It also deploys as-is to any static host — GitHub Pages, Netlify, an S3
 bucket. All paths are relative, so serving it from a subdirectory works.
@@ -134,7 +134,7 @@ bucket. All paths are relative, so serving it from a subdirectory works.
 
 | Key | Action |
 | --- | --- |
-| <kbd>Space</kbd> | Start capture, or pause / resume it |
+| <kbd>Space</kbd> | Start listening, or pause / resume it |
 | <kbd>M</kbd> | Plant a marker at the cursor |
 | <kbd>←</kbd> <kbd>→</kbd> | Pan |
 | <kbd>+</kbd> <kbd>−</kbd> | Zoom |
@@ -144,7 +144,7 @@ bucket. All paths are relative, so serving it from a subdirectory works.
 
 A modern evergreen browser with the Web Audio API and `getUserMedia`
 (Chrome, Edge, Firefox, Safari). No legacy or vendor-prefixed support is
-planned. Microphone permission is requested when you press **Start capture**
+planned. Microphone permission is requested when you press **Start listening**
 and can be revoked at any time.
 
 ## Privacy
@@ -155,7 +155,10 @@ recorded, uploaded or persisted — with one opt-in exception: if you turn on
 *Keep a sound clip of each detection*, a few seconds around each detection are
 held in this tab's memory so you can replay or download them. They are never
 written to storage or sent anywhere, and they are gone when you reload, remove
-the detection, clear the log, switch sessions or turn the option off. Sound
+the detection, clear the log, switch sessions or turn the option off. The
+**Record** button is the other exception: a take you start yourself (up to 10
+minutes, 5 kept) stays in the same way, in memory only, until you delete it,
+download it as WAV or close the page. Sound
 detection is local too: the YAMNet
 model and its runtime are files in this repository, fetched from the same
 place as the rest of the app, and they run in a worker in your tab — no

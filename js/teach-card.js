@@ -87,7 +87,7 @@ export class TeachCard {
     this.line.setAttribute('aria-live', 'polite');
     recRow.append(this.rec, this.line);
 
-    this.startBtn = el('button', 'btn btn-block', 'Start capture');
+    this.startBtn = el('button', 'btn btn-block', 'Start listening');
     this.startBtn.type = 'button';
     this.startBtn.addEventListener('click', () => onStartCapture());
 
@@ -118,7 +118,7 @@ export class TeachCard {
 
     const hint = el('p', 'hint');
     hint.textContent =
-      'Press Record while the sound is happening, and Record again to stop. Record it on its own if you can, ' +
+      'Press Record example while the sound is happening, then Stop recording. Record it on its own if you can, ' +
       'and a few times — near, far, with other noise around — since every example helps. It learns to find ' +
       'this sound again, not every sound of its kind. What is kept is a numeric summary of each second, not ' +
       'audio; it stays in this browser and leaves only in a session export.';
@@ -177,7 +177,7 @@ export class TeachCard {
       return;
     }
     if (!this.status().live) {
-      this.msg.textContent = 'Start capture first: there is nothing to record from.';
+      this.msg.textContent = 'Start listening first: there is nothing to record from.';
       this.refresh();
       return;
     }
@@ -268,7 +268,7 @@ export class TeachCard {
     const recording = this.teach.recording;
 
     this.title.textContent = sound ? `Edit “${sound.label}”` : 'Teach a sound';
-    this.rec.textContent = recording ? '■ Stop' : '● Record';
+    this.rec.textContent = recording ? '■ Stop recording' : '● Record example';
     this.rec.classList.toggle('is-recording', recording);
     this.rec.setAttribute('aria-pressed', String(recording));
     this.startBtn.hidden = live;
@@ -278,10 +278,10 @@ export class TeachCard {
       const wait = model === 'ready' ? '' : model === 'error' ? ' · the classifier failed' : ' · loading the classifier…';
       this.line.textContent = `Recording ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')} · ${formatSeconds(this.teach.seconds)} of sound${wait}`;
     } else if (!live) {
-      this.line.textContent = 'Capture is stopped.';
+      this.line.textContent = 'Listening is paused.';
     } else {
       const n = (sound?.examples.length || 0) + this.pending.length;
-      this.line.textContent = n ? `${n} example${n === 1 ? '' : 's'}` : 'Press Record while the sound is happening.';
+      this.line.textContent = n ? `${n} example${n === 1 ? '' : 's'}` : 'Press Record example while the sound is happening.';
     }
 
     // Saved examples first, then the ones this card has not saved yet. Only

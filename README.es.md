@@ -29,7 +29,7 @@ python3 -m http.server 8080
 npx serve .
 ```
 
-Luego abrí `http://localhost:8080/` y presioná **Start capture**.
+Luego abrí `http://localhost:8080/` y presioná **Start listening**.
 
 También se despliega tal cual en cualquier hosting estático — GitHub Pages,
 Netlify, un bucket de S3. Todas las rutas son relativas, así que servirla
@@ -153,7 +153,7 @@ desde un subdirectorio funciona.
 Un navegador moderno con la Web Audio API y `getUserMedia` (Chrome, Edge,
 Firefox, Safari). No se planea soporte para navegadores antiguos o con
 prefijos de proveedor. El permiso de micrófono se solicita al presionar
-**Start capture** y puede revocarse en cualquier momento.
+**Start listening** y puede revocarse en cualquier momento.
 
 ## Privacidad
 

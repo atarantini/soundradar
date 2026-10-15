@@ -42,6 +42,8 @@ import { MarkersTable } from './markers-table.js';
 import { DetectMenu } from './detect-menu.js';
 import { DetectionsTable } from './detections-table.js';
 import { TeachCard } from './teach-card.js';
+import { TakeRecorder } from './core/recorder.js';
+import { RecordingsMenu } from './recordings.js';
 
 const GUTTER_L = 44; // CSS px reserved for the dB / time axis on each plate
 const THEME_KEY = 'soundradar.theme';
@@ -135,6 +137,7 @@ const detectLog = new DetectionLog();
 let publisher = null;
 const clips = new ClipRecorder({ log: detectLog });
 const clipPlayer = new Audio();
+const recorder = new TakeRecorder();
 const detection = new DetectionEngine({ catalog, log: detectLog, onEvent: onDetection });
 const classifier = new YamnetClassifier();
 const detectTap = new AnalyserTap(engine, SPECTRUM_INPUT);
@@ -188,6 +191,7 @@ const detectMenu = new DetectMenu({
   listEl: $('detectList'),
   badgeEl: $('detectBadge'),
   stateEl: $('modelState'),
+  enabledEl: $('modelEnabled'),
   catalog: DETECTORS,
   colorOf: colorOfDetector,
   onTeach: () => {
@@ -198,7 +202,7 @@ const detectMenu = new DetectMenu({
   onImport: importSound,
   onChange: setDetector,
   onChangeMany: setDetectors,
-  onCollapse: (names) => settings.set({ detectCollapsed: names }, []),
+  onExpand: (names) => settings.set({ detectExpanded: names }, []),
   globalEl: $('detectGlobal'),
   onGlobalThreshold: setGlobalThreshold,
   onGroupThreshold: setGroupThreshold,
@@ -751,7 +755,7 @@ function syncDetection() {
   else if (detection.slots.size) clips.enable(engine);
   else clips.detach();
   detectMenu.sync(settings.v);
-  detectMenu.setCollapsed(settings.v.detectCollapsed);
+  detectMenu.setExpanded(settings.v.detectExpanded);
   syncDetectionsPanel();
 }
 
@@ -959,6 +963,7 @@ function playClip(id) {
     stopClip();
     return;
   }
+  stopTake();
   clipPlayer.src = clip.url;
   // Over speakers the microphone hears the replay; it must not be logged as a
   // fresh detection. YAMNet scores arrive a window late, hence the margin.
@@ -1000,7 +1005,26 @@ $('detectionsToggle').addEventListener('click', () => {
 
 // ---------- capture ----------
 
-const RUN_LABEL = { idle: 'Start capture', requesting: 'Starting…', live: 'Pause', paused: 'Resume', error: 'Try again' };
+const RUN_LABEL = {
+  idle: 'Start listening', requesting: 'Starting…', live: 'Pause', paused: 'Resume listening', error: 'Try again',
+};
+
+/** The Record button: white dot to start, white square and the clock while a take runs. */
+function paintRecording() {
+  const live = engine.running && !engine.paused;
+  const btn = $('recBtn');
+  btn.disabled = !live && !recorder.recording;
+  btn.classList.toggle('is-recording', recorder.recording);
+  btn.setAttribute('aria-pressed', String(recorder.recording));
+  $('recLabel').textContent = recorder.recording ? formatClock(recorder.elapsedMs) : 'Record';
+  btn.setAttribute('aria-label', recorder.recording ? 'Stop recording' : 'Record');
+  $('menuRecordings').classList.toggle('is-recording', recorder.recording);
+}
+
+function formatClock(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
 
 function paintState() {
   const state = engine.error ? 'error' : engine.state;
@@ -1020,16 +1044,20 @@ function paintState() {
     curtain.classList.remove('hidden', 'is-error');
     $('curtainTitle').textContent = 'No signal yet';
     $('curtainBody').textContent =
-      'Start capture to read the room. Audio is analysed in this tab and never leaves your device.';
-    $('curtainBtn').textContent = 'Start capture';
+      'Start listening to read the room. Audio is analysed in this tab and never leaves your device.';
+    $('curtainBtn').textContent = 'Start listening';
   } else {
     curtain.classList.add('hidden');
   }
+  paintRecording();
   syncControls();
   detectMenu.setModel(classifier, state === 'live');
   teachCard.refresh();
   // No more audio is coming: cut pending clips from what has arrived.
-  if (state !== 'live') clips.flush();
+  if (state !== 'live') {
+    clips.flush();
+    recorder.stop(); // no more audio is coming: keep what there is
+  }
   // Pausing suspends the context: one more frame lets the alarms notice and the
   // report drop their "sounding" flags.
   needsIdleDraw = true;
@@ -1060,6 +1088,59 @@ async function startCapture() {
     paintState();
   }
 }
+
+// ---------- recordings ----------
+
+const takePlayer = new Audio();
+const recordingsMenu = new RecordingsMenu({
+  menuEl: $('menuRecordings'),
+  listEl: $('recList'),
+  badgeEl: $('recBadge'),
+  msgEl: $('recMsg'),
+  recorder,
+  onPlay: playTake,
+  onDownload: (id) => {
+    const take = recorder.get(id);
+    if (take) downloadBlob(take.blob, `${timestampSlug('soundradar-recording', take.wallStart)}.wav`);
+  },
+  onDelete: (id) => {
+    if (recordingsMenu.playingId === id) stopTake();
+    recorder.remove(id);
+  },
+});
+
+function playTake(id) {
+  const take = recorder.get(id);
+  if (!take) return;
+  if (recordingsMenu.playingId === id && !takePlayer.paused) return stopTake();
+  stopClip();
+  takePlayer.src = take.url;
+  // The microphone hears the replay over speakers; it must not be logged.
+  detection.quietUntil = performance.now() + take.ms + 1500;
+  takePlayer.play().catch(() => stopTake());
+  recordingsMenu.setPlaying(id);
+}
+
+function stopTake() {
+  if (!takePlayer.paused) takePlayer.pause();
+  if (recordingsMenu.playingId !== null) detection.quietUntil = performance.now() + 1500;
+  recordingsMenu.setPlaying(null);
+}
+
+takePlayer.addEventListener('ended', stopTake);
+
+$('recBtn').addEventListener('click', async () => {
+  if (recorder.recording) recorder.stop();
+  else await recorder.start(engine);
+  if (recorder.error) $('menuRecordings').open = true;
+  paintRecording();
+});
+recorder.subscribe(paintRecording);
+
+// Takes live in memory only: say so before a reload throws them away.
+addEventListener('beforeunload', (e) => {
+  if (recorder.takes.length || recorder.recording) e.preventDefault();
+});
 
 $('runBtn').addEventListener('click', () => {
   if (!engine.running) return startCapture();
@@ -1422,6 +1503,7 @@ function updateReadout(now, force) {
   }
 
   table.update(settings.v, alarm.active);
+  if (recorder.recording) paintRecording(); // the clock
   if ($('menuDetect').open) {
     detectMenu.update(detection);
     if (teachCard.recording) teachCard.refresh(); // the clock, even before any window arrives

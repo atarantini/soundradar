@@ -39,7 +39,7 @@ export const BASE_DEFAULTS = {
   detectClips: false,
   // Detection menu categories folded away (names from GROUPS). View state, but
   // per session like the rest of the menu, so it survives a reload.
-  detectCollapsed: [],
+  detectExpanded: [],
   // Height of the plates as a fraction of the window, once the user has dragged
   // the splitter under them. 0 leaves the layout to the stylesheet.
   platesSplit: 0,
@@ -119,8 +119,8 @@ export function normalize(s, nyquist = 24000) {
   s.detectClips = Boolean(s.detectClips);
   const split = Number(s.platesSplit);
   s.platesSplit = Number.isFinite(split) && split > 0 ? clamp(split, 0.15, 0.9) : 0;
-  s.detectCollapsed = Array.isArray(s.detectCollapsed)
-    ? [...new Set(s.detectCollapsed.filter((g) => typeof g === 'string' && g.length <= 40))].slice(0, 16)
+  s.detectExpanded = Array.isArray(s.detectExpanded)
+    ? [...new Set(s.detectExpanded.filter((g) => typeof g === 'string' && g.length <= 40))].slice(0, 16)
     : [];
   return s;
 }

@@ -128,6 +128,7 @@
         </label>
         <label class="check"><input type="checkbox" id="spectrumFill"><span>Fill under trace</span></label>
         <label class="check"><input type="checkbox" id="showHearingBand"><span>Dim inaudible range</span></label>
+        <button class="btn btn-block" id="themeBtn" type="button" title="Switch between daylight and low-light">◐ Light / dark theme</button>
         <hr class="menu-rule">
         <p class="tag">Alarms</p>
         <label class="field field-row"><span class="tag">Volume</span>
@@ -148,8 +149,8 @@
       <div class="menu-panel menu-panel-wide">
         <div class="model-card" id="modelCard">
           <div class="model-card-head">
-            <span class="model-card-name">YAMNet</span>
-            <span class="model-card-meta" id="modelMeta">16 MB &middot; Apache-2.0 &middot; 521 sounds</span>
+            <span class="model-card-name">Status</span>
+            <span class="model-card-meta" id="modelEnabled">No detection features enabled</span>
           </div>
           <p class="model-state" id="modelState">Not loaded</p>
         </div>
@@ -159,15 +160,26 @@
         <label class="check"><input type="checkbox" id="detectClips"><span>Keep a sound clip of each detection</span></label>
       </div>
     </details>
-  </nav>
 
-  <button class="icon-btn" id="themeBtn" type="button" title="Switch between daylight and low-light" aria-label="Switch between daylight and low-light">◐</button>
+    <details class="menu" id="menuRecordings" hidden>
+      <summary>Recordings <b class="menu-badge" id="recBadge" hidden></b></summary>
+      <div class="menu-panel">
+        <p class="hint is-error" id="recMsg" role="status" hidden></p>
+        <div class="rec-list" id="recList"></div>
+      </div>
+    </details>
+  </nav>
 
   <!-- Capture sits last in the bar so it is always the rightmost control,
        in the same place whatever else the toolbar is showing. -->
+  <button class="record" id="recBtn" type="button" disabled
+          title="Record what the microphone hears, to play back or download" aria-label="Record">
+    <span class="record-dot" aria-hidden="true"></span>
+    <span id="recLabel">Record</span>
+  </button>
   <button class="capture" id="runBtn" type="button">
     <span class="capture-dot" id="lamp" aria-hidden="true"></span>
-    <span id="runLabel">Start capture</span>
+    <span id="runLabel">Start listening</span>
   </button>
 </header>
 
@@ -210,8 +222,8 @@
   <div class="curtain" id="curtain">
     <div class="curtain-inner">
       <h2 class="curtain-title" id="curtainTitle">No signal yet</h2>
-      <p class="curtain-body" id="curtainBody">Start capture to read the room. Audio is analysed in this tab and never leaves your device.</p>
-      <button class="btn btn-primary" id="curtainBtn" type="button">Start capture</button>
+      <p class="curtain-body" id="curtainBody">Start listening to read the room. Audio is analysed in this tab and never leaves your device.</p>
+      <button class="btn btn-primary" id="curtainBtn" type="button">Start listening</button>
     </div>
   </div>
 </main>
