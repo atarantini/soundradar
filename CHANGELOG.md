@@ -6,6 +6,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Install it and use it offline.** SoundRadar is now an installable web app:
+  in Chrome on Android, *Install app* (or *Add to Home screen*) puts it on the
+  home screen, and it opens in its own window. After one visit online it
+  works with no connection at all — sound detection included, once the
+  YAMNet model (about 16 MB) has finished downloading in the background,
+  which it skips under Data Saver until detection is first used. Online, it
+  always loads the latest version.
+
 ## [0.3.0] — 2026-10-11
 
 The listening release: SoundRadar now recognises and logs the sounds it hears,
