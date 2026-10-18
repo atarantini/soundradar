@@ -3,7 +3,8 @@
 *[Leer en español](./README.es.md)*
 
 **[▶ Open the live app](https://atarantini.github.io/soundradar/)** — runs in
-your browser, nothing to install.
+your browser, nothing to install. On Android, Chrome's *Install app* adds it
+to the home screen, and after one visit it works offline.
 
 A real-time audio spectrum analyzer and waterfall that runs entirely in your
 browser. Point a microphone at a room, a motor, a speaker or a wall, and read

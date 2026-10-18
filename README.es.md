@@ -1,7 +1,9 @@
 # SoundRadar
 
 **[▶ Abrir la app en vivo](https://atarantini.github.io/soundradar/)** — se
-ejecuta en tu navegador, no hay nada que instalar.
+ejecuta en tu navegador, no hay nada que instalar. En Android, *Instalar app*
+de Chrome la agrega a la pantalla de inicio, y después de una visita funciona
+sin conexión.
 
 Un analizador de espectro de audio en tiempo real con waterfall que funciona
 completamente en tu navegador. Apuntá un micrófono a una habitación, un

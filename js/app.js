@@ -1673,3 +1673,18 @@ requestAnimationFrame(frame);
 // click, touch or key press wakes it.
 for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, () => engine.wake(), true);
 if (support.ok) startCapture();
+
+// Offline use and installation: sw.js keeps a copy of the app. Needs HTTPS or
+// localhost, so a plain-http LAN address skips it.
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service worker not registered:', err));
+  // After the page's own loading: refresh the copy, then fetch the YAMNet model
+  // (~16 MB) — unless Data Saver is on, when detection caches it on first use.
+  window.addEventListener('load', async () => {
+    const reg = await navigator.serviceWorker.ready;
+    reg.active?.postMessage({ type: 'sync', model: !navigator.connection?.saveData });
+  });
+  // Installed, ask the browser not to evict that copy — or the sessions in
+  // localStorage — under storage pressure. Chrome grants it without a prompt.
+  if (matchMedia('(display-mode: standalone)').matches) navigator.storage?.persist?.();
+}
