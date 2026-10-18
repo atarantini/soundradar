@@ -27,6 +27,8 @@ js/core/sessions.js   named save states (settings + markers + learned sounds) an
 js/core/alarm.js      the marker alarm / "finder" tone, and the detection chime
 js/core/detect/       sound detection: catalog, engine, trigger, log, rules/, YAMNet, learned sounds
 js/core/publish.js    opt-in MQTT publishing of detection events + heartbeat (config-enabled)
+sw.js                 service worker: offline cache + installability (list every new file in CORE, bump VERSION)
+icons/                PNG app icons for the manifest (rendered from favicon.svg)
 js/config.js          deployment config; MQTT off here, js/config.local.js (gitignored) overrides
 js/core/capture.js    AudioWorklet tap streaming raw samples (+ capture-worklet.js)
 js/core/resample.js   streaming any-rate → any-rate resampler (worker-safe)

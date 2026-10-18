@@ -1673,3 +1673,9 @@ requestAnimationFrame(frame);
 // click, touch or key press wakes it.
 for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, () => engine.wake(), true);
 if (support.ok) startCapture();
+
+// Offline use and installation: sw.js caches the app (and the YAMNet model) on
+// the first visit. Needs HTTPS or localhost, so a plain-http LAN address skips it.
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service worker not registered:', err));
+}
