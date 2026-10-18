@@ -1,16 +1,20 @@
 // Service worker: makes the app installable and usable offline.
 //
-// Everything is same-origin static files, so the whole app is cached on first
-// visit. Bump VERSION whenever the file list below changes; code files are also
-// refreshed in the background on every visit (stale-while-revalidate), so an
-// ordinary edit shows up on the *next* load without touching this file.
+// Code is network-first: online, every load gets what is deployed, exactly as
+// without a service worker, and keeps a copy; offline, the copy is served.
+// Once a page has loaded it asks for a 'sync', which re-fetches every cached
+// file — so modules loaded only later (the YAMNet worker and TF.js) stay in
+// step with the page that will load them — and then fills in the YAMNet model.
+// The model (~16 MB) is never part of the install: a slow link must not hold
+// the install up, or fail it, for the sake of a feature that is optional.
 
-const VERSION = 'v1';
-const CORE_CACHE = `soundradar-core-${VERSION}`;
-const MODEL_CACHE = 'soundradar-model-v1'; // survives code updates: ~16 MB, never changes
+const CODE_CACHE = 'soundradar-code';
+const MODEL_CACHE = 'soundradar-model-v1'; // the weights never change
 
-// Paths are relative to this file, so it works under /soundradar/ on GitHub Pages.
-const CORE = [
+// Precached so the app works offline even before a feature has been used once.
+// Paths are relative to this file, so it works under /soundradar/ on GitHub
+// Pages. A file left out is still cached the first time it loads online.
+const CODE = [
   './', 'index.html', 'manifest.webmanifest', 'favicon.svg',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
   'css/style.css',
@@ -28,76 +32,88 @@ const CORE = [
   'js/core/detect/yamnet-categories.js', 'js/core/detect/yamnet-centre.js',
   'js/core/detect/yamnet-classes.js', 'js/core/detect/yamnet-worker.js', 'js/core/detect/yamnet.js',
   'js/core/detect/rules/mosquito.js', 'js/core/detect/rules/siren.js',
-  'js/vendor/tf.fesm.min.js',
+  'js/vendor/tf.fesm.min.js', 'js/vendor/mqtt.esm.js',
 ];
-// Large or rarely used: fetched after install so a slow link cannot fail it.
-const LATER = [
+const MODEL = [
   'models/yamnet/model.json',
   'models/yamnet/group1-shard1of4.bin', 'models/yamnet/group1-shard2of4.bin',
   'models/yamnet/group1-shard3of4.bin', 'models/yamnet/group1-shard4of4.bin',
-  'js/vendor/mqtt.esm.js',
 ];
 
 const isModel = (url) => url.pathname.includes('/models/');
+// One entry per file, whatever query string a request carried.
+const keyOf = (url) => { const u = new URL(url, location); u.search = ''; u.hash = ''; return u.href; };
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    const core = await caches.open(CORE_CACHE);
-    await core.addAll(CORE);
-    self.skipWaiting();
-    // Not awaited: install completes now, the model keeps downloading.
-    const fetchLater = async () => {
-      for (const path of LATER) {
-        const cache = await caches.open(path.startsWith('models/') ? MODEL_CACHE : CORE_CACHE);
-        if (await cache.match(path)) continue;
-        try { await cache.add(path); } catch { /* fetched on demand later */ }
-      }
-    };
-    event.waitUntil(fetchLater());
+    const cache = await caches.open(CODE_CACHE);
+    // One file failing (renamed, say) must not cost the whole install.
+    await Promise.allSettled(CODE.map((path) => cache.add(path)));
+    await self.skipWaiting();
   })());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
+    // Only our own: every project page on <user>.github.io shares this origin,
+    // and so its Cache Storage.
     for (const key of await caches.keys()) {
-      if (key.startsWith('soundradar-core-') && key !== CORE_CACHE) await caches.delete(key);
+      if (key.startsWith('soundradar-') && key !== CODE_CACHE && key !== MODEL_CACHE) await caches.delete(key);
     }
     await self.clients.claim();
   })());
 });
 
 self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  if (request.method !== 'GET') return;
-  const url = new URL(request.url);
-  if (url.origin !== location.origin) return; // MQTT and anything else off-site: untouched
-  event.respondWith(respond(request, url));
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || url.origin !== location.origin) return; // MQTT etc.: untouched
+  event.respondWith(isModel(url) ? cacheFirst(event) : networkFirst(event));
 });
 
-async function respond(request, url) {
-  const cache = await caches.open(isModel(url) ? MODEL_CACHE : CORE_CACHE);
-  // Range requests and query strings aside, the cached copy is keyed by path.
-  const hit = await cache.match(request, { ignoreSearch: true });
+async function cacheFirst(event) {
+  const cache = await caches.open(MODEL_CACHE);
+  const key = keyOf(event.request.url);
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const res = await fetch(event.request);
+  if (res.ok) event.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
 
-  // Model weights never change: cache first, network only to fill a gap.
-  if (hit && isModel(url)) return hit;
-
-  const refresh = fetch(request).then((res) => {
-    if (res.ok && res.type === 'basic') cache.put(request, res.clone());
-    return res;
-  });
-
-  if (hit) {
-    refresh.catch(() => {}); // revalidate quietly; offline is fine
-    return hit;
-  }
+async function networkFirst(event) {
+  const { request } = event;
+  const cache = await caches.open(CODE_CACHE);
+  const key = keyOf(request.url);
   try {
-    return await refresh;
+    const res = await fetch(request);
+    if (res.ok) event.waitUntil(cache.put(key, res.clone()));
+    return res;
   } catch (err) {
-    if (request.mode === 'navigate') {
-      const shell = await cache.match('index.html');
-      if (shell) return shell;
-    }
-    throw err; // e.g. the optional config.local.js while offline: the app already copes
+    const hit = await cache.match(key)
+      ?? (request.mode === 'navigate' ? await cache.match(keyOf('./')) : undefined);
+    if (hit) return hit;
+    throw err; // e.g. the optional config.local.js offline: the app already copes
+  }
+}
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'sync') event.waitUntil(sync(event.data));
+});
+
+async function sync({ model }) {
+  const code = await caches.open(CODE_CACHE);
+  const keys = new Set([...CODE.map(keyOf), ...(await code.keys()).map((r) => r.url)]);
+  await Promise.allSettled([...keys].map(async (key) => {
+    const res = await fetch(key); // offline: throws, and the copy stays
+    if (res.ok) await code.put(key, res);
+    else if (res.status === 404) await code.delete(key); // gone from the deployment
+  }));
+
+  if (!model) return;
+  const cache = await caches.open(MODEL_CACHE);
+  for (const path of MODEL) {
+    const key = keyOf(path);
+    if (await cache.match(key)) continue;
+    try { await cache.add(key); } catch { return; } // offline or cut short: next visit resumes
   }
 }
