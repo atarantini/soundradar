@@ -28,6 +28,7 @@ js/core/alarm.js      the marker alarm / "finder" tone, and the detection chime
 js/core/detect/       sound detection: catalog, engine, trigger, log, rules/, YAMNet, learned sounds
 js/core/publish.js    opt-in MQTT publishing of detection events + heartbeat (config-enabled)
 sw.js                 service worker: installable + offline (network-first copy; list new files in CODE)
+manifest.webmanifest  `id` resolves against the origin, not the file: keep it `/soundradar/`, or it claims all of github.io
 icons/                PNG app icons for the manifest (rendered from favicon.svg)
 js/config.js          deployment config; MQTT off here, js/config.local.js (gitignored) overrides
 js/core/capture.js    AudioWorklet tap streaming raw samples (+ capture-worklet.js)

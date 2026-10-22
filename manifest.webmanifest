@@ -2,7 +2,7 @@
   "name": "SoundRadar — spectrum analyzer",
   "short_name": "SoundRadar",
   "description": "Real-time audio spectrum analyzer and waterfall display that runs entirely in your browser.",
-  "id": "./",
+  "id": "/soundradar/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
