@@ -34,7 +34,7 @@ import { WATERFALL_MAPS, MAP_LABELS } from './core/colormap.js';
 import { harmonics } from './core/harmonics.js';
 import {
   clamp, dpr, resizeCanvasToDisplaySize, formatFreq, formatAgo,
-  downloadBlob, timestampSlug, debounce,
+  downloadBlob, timestampSlug, debounce, cssVar,
 } from './core/util.js';
 import { readTheme } from './theme.js';
 import { Ruler } from './ruler.js';
@@ -101,6 +101,15 @@ function applyTheme(mode) {
   } catch {
     /* storage unavailable */
   }
+  syncThemeColor();
+}
+
+// The installed app's status bar takes the page's theme-color, so it follows
+// the toolbar. The manifest's theme_color (the dark toolbar, as dark is the
+// default) still colours the splash screen and Android's navigation bar.
+function syncThemeColor() {
+  document.querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', cssVar('--paper-2', '#1e232b'));
 }
 
 function currentThemeIsDark() {
@@ -271,7 +280,7 @@ const relayout = debounce(() => {
 
 window.addEventListener('resize', relayout);
 if (window.ResizeObserver) new ResizeObserver(relayout).observe(fieldView);
-matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', relayout);
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { syncThemeColor(); relayout(); });
 
 $('themeBtn').addEventListener('click', () => {
   applyTheme(currentThemeIsDark() ? 'light' : 'dark');
