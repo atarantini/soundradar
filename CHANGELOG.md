@@ -15,6 +15,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   YAMNet model (about 16 MB) has finished downloading in the background,
   which it skips under Data Saver until detection is first used. Online, it
   always loads the latest version.
+  Where Chrome offers it, Display → *Install as an app* installs it too:
+  Chrome's own menu wrongly reports it as already installed while another
+  app from the same site is (crbug.com/568841400).
 
 ## [0.3.0] — 2026-10-11
 
