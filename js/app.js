@@ -1688,3 +1688,23 @@ if ('serviceWorker' in navigator && window.isSecureContext) {
   // localStorage — under storage pressure. Chrome grants it without a prompt.
   if (matchMedia('(display-mode: standalone)').matches) navigator.storage?.persist?.();
 }
+
+// Chrome's own ⋮ → Install app says "already installed" while any other app
+// from the same origin is installed — every project page on <user>.github.io
+// shares one (crbug.com/568841400, from M154). The page's own prompt checks the
+// app's scope instead, so offer it whenever Chrome says the app is installable.
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  installPrompt = e;
+  $('installApp').hidden = false;
+});
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  $('installApp').hidden = true;
+});
+$('installApp').addEventListener('click', () => {
+  if (!installPrompt) return;
+  installPrompt.prompt(); // usable once; Chrome fires another on a later load
+  installPrompt = null;
+  $('installApp').hidden = true;
+});
